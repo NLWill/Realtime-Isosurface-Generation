@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "../DynamicTerrain/Dynamic_Terrain.h"
+#include "Dynamic_Terrain.h"
 #include "MarchingCubesGenerator.h"
 #include "Math/UnrealMathUtility.h"
 #include <memory>

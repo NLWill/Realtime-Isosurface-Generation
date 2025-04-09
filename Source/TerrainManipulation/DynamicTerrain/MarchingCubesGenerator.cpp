@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "../DynamicTerrain/MarchingCubesGenerator.h"
+#include "MarchingCubesGenerator.h"
 
 #define DEBUG_MARCHING_CUBES false
 
