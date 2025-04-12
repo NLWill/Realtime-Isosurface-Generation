@@ -25,6 +25,12 @@ public:
 		this->sizeZ = sizeZ;
 		data.Init(defaultValue, sizeX * sizeY * sizeZ);
 	}
+	TArray3D<T>(const TArray3D<T> &other) {
+		sizeX = other.sizeX;
+		sizeY = other.sizeY;
+		sizeZ = other.sizeZ;
+		data = other.data;
+	}
 	~TArray3D<T>() = default;
 
 	/// <summary>
@@ -133,6 +139,15 @@ public:
 		default:
 			return 0;
 		}
+	}
+
+	bool IsValidIndex(int32 x, int32 y, int32 z) const 
+	{
+		if (x < 0 || x >= sizeX) return false;
+		if (y < 0 || y >= sizeY) return false;
+		if (z < 0 || z >= sizeZ) return false;
+
+		return true;
 	}
 
 private:
