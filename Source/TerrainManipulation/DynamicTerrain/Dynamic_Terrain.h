@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "ProceduralMeshComponent.h"
+#include "Components/DynamicMeshComponent.h"
 #include "TerrainManipulation/DataStructs/TArray3D.h"
 #include "Dynamic_Terrain.generated.h"
 
@@ -33,7 +34,7 @@ protected:
 
 	// The procedural mesh component containing the mesh data that will be rendered in-game
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
-	class UProceduralMeshComponent* dynamicMesh;
+	class UDynamicMeshComponent* dynamicMesh;
 
 public:
 	// Sets default values for this actor's properties

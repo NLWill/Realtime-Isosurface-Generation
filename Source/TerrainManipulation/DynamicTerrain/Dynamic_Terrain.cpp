@@ -2,7 +2,7 @@
 
 
 #include "Dynamic_Terrain.h"
-#include "MarchingCubesGenerator.h"
+#include "MarchingCubes/MarchingCubesGenerator.h"
 #include "Math/UnrealMathUtility.h"
 #include <memory>
 
@@ -12,8 +12,7 @@ ADynamic_Terrain::ADynamic_Terrain()
 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
-	dynamicMesh = CreateDefaultSubobject<UProceduralMeshComponent>("Dynamic Mesh");
-	dynamicMesh->SetupAttachment(RootComponent);
+	dynamicMesh = CreateDefaultSubobject<UDynamicMeshComponent>("Dynamic Mesh");
 
 	gridPointCount = FIntVector3(5, 5, 5);
 	bottomLeftAnchor = FVector::Zero();
@@ -53,7 +52,13 @@ void ADynamic_Terrain::CalculateMesh()
 	{
 		triangles[i] = i;
 	}
-	dynamicMesh->CreateMeshSection(0, vertices, triangles, {}, {}, {}, {}, true);
+
+	//FDynamicMesh3* mesh = NewObject<FDynamicMesh3>();
+	
+	//UDynamicMesh* dynMesh = NewObject<UDynamicMesh>();
+
+	//dynamicMesh->SetDynamicMesh(dynMesh);
+	//dynamicMesh->CreateMeshSection(0, vertices, triangles, {}, {}, {}, {}, true);
 }
 
 FVector ADynamic_Terrain::GetLocalPositionOfGridPoint(int x, int y, int z) const
