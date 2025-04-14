@@ -58,11 +58,11 @@ void ADynamic_Terrain::CalculateMesh()
 	dynamicMesh->CreateMeshSection(0, vertices, triangles, {}, {}, {}, {}, true);
 	*/
 
-	MarchingTetrahedraGenerator* marchingTetrahedra = NewObject<MarchingTetrahedraGenerator>();
-	marchingTetrahedra->dataGrid = TArray3D<float>(dataGrid);
-	FDynamicMesh3 mesh{ marchingTetrahedra };
+	MarchingTetrahedraGenerator marchingTetrahedra = MarchingTetrahedraGenerator(dataGrid);
+	
+	FDynamicMesh3 mesh = marchingTetrahedra.Generate();
 
-	dynamicMesh->SetMesh(MoveTemp(mesh));	
+	dynamicMesh->SetMesh(MoveTemp(mesh));
 }
 
 FVector ADynamic_Terrain::GetLocalPositionOfGridPoint(int x, int y, int z) const

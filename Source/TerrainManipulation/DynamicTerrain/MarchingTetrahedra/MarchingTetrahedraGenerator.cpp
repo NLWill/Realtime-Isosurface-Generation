@@ -16,18 +16,19 @@ MarchingTetrahedraGenerator::MarchingTetrahedraGenerator(int gridCountX, int gri
 	dataGrid = TArray3D<float>(gridCountX, gridCountY, gridCountZ);
 }
 
+MarchingTetrahedraGenerator::MarchingTetrahedraGenerator(TArray3D<float> providedDataGrid)
+{
+	dataGrid = TArray3D<float>(providedDataGrid);
+}
+
 MarchingTetrahedraGenerator::MarchingTetrahedraGenerator(const MarchingTetrahedraGenerator& other)
 {
 	dataGrid = TArray3D<float>(other.dataGrid);
 }
 
-MarchingTetrahedraGenerator::~MarchingTetrahedraGenerator()
+FDynamicMesh3 MarchingTetrahedraGenerator::Generate()
 {
-}
-
-FMeshShapeGenerator& MarchingTetrahedraGenerator::Generate()
-{
-	Reset();
+	generatedMesh.Clear();
 
 	// Perform the algorithm to determine the number of triangles
 	if (bGPUCompute) 
@@ -40,7 +41,7 @@ FMeshShapeGenerator& MarchingTetrahedraGenerator::Generate()
 	}	
 
 	// A generator should always return a reference to itself
-	return *this;
+	return generatedMesh;
 }
 
 void MarchingTetrahedraGenerator::GenerateOnGPU()
@@ -55,14 +56,6 @@ void MarchingTetrahedraGenerator::GenerateOnGPU()
 	// Run the algorithm
 
 
-	// Set the buffer size 
-	int totalVertices = 0, totalTriangles = 0, totalUVs = 0, totalNormals = 0;
-	for (size_t i = 0; i < verts.size(); i++)
-	{
-		totalVertices += verts[i].size();
-		totalTriangles += tris[i].size();
-	}
-	SetBufferSizes(totalVertices, totalTriangles, totalUVs, totalNormals);
 
 	// Populate the vertices and triangles arrays
 	int numVertices = 0;
@@ -71,13 +64,13 @@ void MarchingTetrahedraGenerator::GenerateOnGPU()
 	{
 		for (size_t j = 0; j < verts[i].size(); j++)
 		{
-			int vertexID = AppendVertex(verts[i][j]);
+			int vertexID = generatedMesh.AppendVertex(verts[i][j]);
 		}
 		for (size_t j = 0; j < tris[i].size(); j++)
 		{
 			// Offset the triangle indices by the number of vertices from previous GPU worker groups
 			// to ensure the tris still point to the correct vertices
-			AppendTriangle(tris[i][j].A + numVertices, tris[i][j].B + numVertices, tris[i][j].C + numVertices);
+			generatedMesh.AppendTriangle(tris[i][j].A + numVertices, tris[i][j].B + numVertices, tris[i][j].C + numVertices);
 		}
 
 		numVertices += verts[i].size();
@@ -258,9 +251,9 @@ void MarchingTetrahedraGenerator::GenerateTrianglesFromTetrahedron(int tetraInde
 	{
 		for (int i = 0; i < 3; i++)
 		{
-			interpolatedVertexIDs[i] = AppendVertex(interpolatedVertexList[tetrahedronTriTable[tetraIndex][i]]);
+			interpolatedVertexIDs[i] = generatedMesh.AppendVertex(interpolatedVertexList[tetrahedronTriTable[tetraIndex][i]]);
 		}
-		AppendTriangle(interpolatedVertexIDs[0], interpolatedVertexIDs[1], interpolatedVertexIDs[2]);
+		generatedMesh.AppendTriangle(interpolatedVertexIDs[0], interpolatedVertexIDs[1], interpolatedVertexIDs[2]);
 	}
 	else return;
 
@@ -268,8 +261,8 @@ void MarchingTetrahedraGenerator::GenerateTrianglesFromTetrahedron(int tetraInde
 	if (tetrahedronTriTable[tetraIndex][3] != -1) 
 	{
 		// Append the final required vertex from the triangle strip
-		interpolatedVertexIDs[3] = AppendVertex(interpolatedVertexList[tetrahedronTriTable[tetraIndex][3]]);
+		interpolatedVertexIDs[3] = generatedMesh.AppendVertex(interpolatedVertexList[tetrahedronTriTable[tetraIndex][3]]);
 		// Reverse the direction of the vertices otherwise the triangle will point the wrong way
-		AppendTriangle(interpolatedVertexIDs[3], interpolatedVertexIDs[2], interpolatedVertexIDs[1]);
+		generatedMesh.AppendTriangle(interpolatedVertexIDs[3], interpolatedVertexIDs[2], interpolatedVertexIDs[1]);
 	}
 }

@@ -3,19 +3,20 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Generators/MeshShapeGenerator.h"
+#include "DynamicMesh/DynamicMesh3.h"
 #include "TerrainManipulation/DataStructs/TArray3D.h"
 
 /**
  *
  */
-class TERRAINMANIPULATION_API MarchingTetrahedraGenerator : public UE::Geometry::FMeshShapeGenerator
+class TERRAINMANIPULATION_API MarchingTetrahedraGenerator
 {
 public:
 	MarchingTetrahedraGenerator();
 	MarchingTetrahedraGenerator(int gridCountX, int gridCountY, int gridCountZ);
+	MarchingTetrahedraGenerator(TArray3D<float> providedDataGrid);
 	MarchingTetrahedraGenerator(const MarchingTetrahedraGenerator& other);
-	~MarchingTetrahedraGenerator();
+	virtual ~MarchingTetrahedraGenerator() = default;
 
 	// The 3D array of data that informs the shape of the isosurface
 	TArray3D<float> dataGrid;
@@ -29,8 +30,12 @@ public:
 	// Should this generator run in parallel on the GPU?
 	bool bGPUCompute = false;
 
+protected:
+	UE::Geometry::FDynamicMesh3 generatedMesh = UE::Geometry::FDynamicMesh3::FDynamicMesh3();
+
+public:
 	// Generate the mesh
-	virtual UE::Geometry::FMeshShapeGenerator& Generate();
+	virtual UE::Geometry::FDynamicMesh3 Generate();
 
 protected:
 	/// <summary>
