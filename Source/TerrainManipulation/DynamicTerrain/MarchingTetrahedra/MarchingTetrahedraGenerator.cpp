@@ -104,7 +104,7 @@ void MarchingTetrahedraGenerator::GenerateOnCPU()
 			{
 				gridIndex.X = i;
 				InitialiseGridCell(gridCell, gridIndex);
-
+				bool trianglesAdded = TriangulateGridCell(gridCell);
 			}
 		}
 	}
@@ -113,13 +113,19 @@ void MarchingTetrahedraGenerator::GenerateOnCPU()
 void MarchingTetrahedraGenerator::InitialiseGridCell(FGridCell& gridCell, const UE::Geometry::FVector3i& gridIndex)
 {
 	for (int i = 0; i < 8; i++) {
-		gridCell.indices[i] = gridIndex + cubeVertexOrder[i];
-		gridCell.values[i] = dataGrid.GetElement(gridCell.indices[i].X, gridCell.indices[i].Y, gridCell.indices[i].Z);
+		FVector3i cornerIndex = gridIndex + cubeVertexOrder[i];
+		gridCell.positions[i] = FVector3d(cornerIndex.X * gridCellDimensions.X, cornerIndex.Y * gridCellDimensions.Y, cornerIndex.Z * gridCellDimensions.Z);
+		gridCell.values[i] = dataGrid.GetElement(gridIndex.X + cubeVertexOrder[i].X, gridIndex.Y + cubeVertexOrder[i].Y, gridIndex.Z + cubeVertexOrder[i].Z);
 	}
 }
 
-void MarchingTetrahedraGenerator::InitialiseTetrahedron(FTetrahedron& tetra, const TArray<FVector3d>& interpolatedEdges, const int tetraID)
+void MarchingTetrahedraGenerator::InitialiseTetrahedron(FTetrahedron& tetra, const FGridCell& gridCell, const int tetraID)
 {
+	for (size_t i = 0; i < 4; i++)
+	{
+		tetra.positions[i] = gridCell.positions[tetrahedronList[tetraID][i]];
+		tetra.values[i] = gridCell.values[tetrahedronList[tetraID][i]];
+	}
 }
 
 bool MarchingTetrahedraGenerator::TriangulateGridCell(const FGridCell& gridCell)
@@ -131,16 +137,17 @@ bool MarchingTetrahedraGenerator::TriangulateGridCell(const FGridCell& gridCell)
 	if (cubeEdgeTable[cubeIndex] == 0) return false;
 
 	// Interpolate edges
-
+	TArray<FVector3d> interpolatedEdges = InterpolateVerticesOnEdges(gridCell, cubeIndex);
 
 	// Iterate over each tetrahedron
-	FTetrahedron tetra;
+	FTetrahedron tetra{};
 	for (int i = 0; i < 6; i++)
 	{
-
+		InitialiseTetrahedron(tetra, gridCell, i);
+		bool trianglesAdded = TriangulateTetrahedron(tetra);
 	}
 
-	return false;
+	return true;
 }
 
 bool MarchingTetrahedraGenerator::TriangulateTetrahedron(const FTetrahedron& tetra)
@@ -151,7 +158,12 @@ bool MarchingTetrahedraGenerator::TriangulateTetrahedron(const FTetrahedron& tet
 	// If all vertices are inside or all outside, no triangles need to be constructed, so return false
 	if (tetrahedronEdgeTable[tetraIndex] == 0) return false;
 
-	return false;
+	// Interpolate edges
+	TArray<FVector3d> interpolatedEdges = InterpolateVerticesOnEdges(tetra, tetraIndex);
+
+	GenerateTrianglesFromTetrahedron(tetraIndex, interpolatedEdges);
+
+	return true;
 }
 
 int MarchingTetrahedraGenerator::CalculateCubeIndex(const FGridCell& gridCell) const
@@ -172,4 +184,92 @@ int MarchingTetrahedraGenerator::CalculateTetrahedronIndex(const FTetrahedron& t
 		if (tetra.values[i] > isovalue) tetraIndex |= (1 << i);
 	}
 	return tetraIndex;
+}
+
+TArray<FVector3d> MarchingTetrahedraGenerator::InterpolateVerticesOnEdges(const FGridCell& gridCell, const int cubeIndex)
+{
+	TArray<FVector3d> interpolatedVertices;
+	interpolatedVertices.Init(FVector3d::ZeroVector, 19);
+	// Iterate over the 19 edges of the cube (plus diagonals from the tetrahedra)
+	// If the surface does cross this edge, find the interpolation point, otherwise write a zero vector
+	for (int i = 0; i < 19; i++)
+	{
+		if (cubeEdgeTable[cubeIndex] & 1 << i)
+		{
+			std::pair<int, int> vertices = cubeVerticesOnEdge[i];
+			FVector interpolatedPoint = InterpolateEdge(gridCell.positions[vertices.first], gridCell.positions[vertices.second], gridCell.values[vertices.first], gridCell.values[vertices.second]);
+			interpolatedVertices[i] = interpolatedPoint;
+		}
+		else
+		{
+			// This edge will not be used in calculations, so pad the list with zero vector
+			//interpolatedVertices[i] = FVector3d::ZeroVector;
+			// No need as the array is initialised with this anyway
+		}
+	}
+	return interpolatedVertices;
+}
+
+TArray<FVector3d> MarchingTetrahedraGenerator::InterpolateVerticesOnEdges(const FTetrahedron& tetra, const int tetraIndex)
+{
+	TArray<FVector3d> interpolatedVertices;
+	interpolatedVertices.Init(FVector3d::ZeroVector, 6);
+	// Iterate over the 6 edges of the tetrahedron
+	// If the surface does cross this edge, find the interpolation point, otherwise write a zero vector
+	for (int i = 0; i < 6; i++)
+	{
+		if (tetrahedronEdgeTable[tetraIndex] & 1 << i)
+		{
+			std::pair<int, int> vertices = cubeVerticesOnEdge[i];
+			FVector interpolatedPoint = InterpolateEdge(tetra.positions[vertices.first], tetra.positions[vertices.second], tetra.values[vertices.first], tetra.values[vertices.second]);
+			interpolatedVertices[i] = interpolatedPoint;
+		}
+		else
+		{
+			// This edge will not be used in calculations, so pad the list with zero vector
+			//interpolatedVertices[i] = FVector3d::ZeroVector;
+			// No need as the array is initialised with this anyway
+		}
+	}
+	return interpolatedVertices;
+}
+
+FVector3d MarchingTetrahedraGenerator::InterpolateEdge(FVector3d vertex1, FVector3d vertex2, float value1, float value2)
+{
+	if (FMath::Abs(value2 - value1) < 1e-5) {
+		// There is significant risk of floating point errors and division by zero, so return vertex1
+		return vertex1;
+	}
+
+	float interpolant = (isovalue - value1) / (value2 - value1);
+
+	return vertex1 + (vertex2 - vertex1) * interpolant;
+}
+
+void MarchingTetrahedraGenerator::GenerateTrianglesFromTetrahedron(int tetraIndex, const TArray<FVector3d>& interpolatedVertexList)
+{
+	// Store the ids of the vertices within the Vertices array
+	TArray<int> interpolatedVertexIDs;
+	interpolatedVertexIDs.Init(-1, 4);
+
+
+	// Check at least one triangle is required
+	if (tetrahedronTriTable[tetraIndex][2] != -1)
+	{
+		for (int i = 0; i < 3; i++)
+		{
+			interpolatedVertexIDs[i] = AppendVertex(interpolatedVertexList[tetrahedronTriTable[tetraIndex][i]]);
+		}
+		AppendTriangle(interpolatedVertexIDs[0], interpolatedVertexIDs[1], interpolatedVertexIDs[2]);
+	}
+	else return;
+
+	// Check whether a second triangle is required
+	if (tetrahedronTriTable[tetraIndex][3] != -1) 
+	{
+		// Append the final required vertex from the triangle strip
+		interpolatedVertexIDs[3] = AppendVertex(interpolatedVertexList[tetrahedronTriTable[tetraIndex][3]]);
+		// Reverse the direction of the vertices otherwise the triangle will point the wrong way
+		AppendTriangle(interpolatedVertexIDs[3], interpolatedVertexIDs[2], interpolatedVertexIDs[1]);
+	}
 }

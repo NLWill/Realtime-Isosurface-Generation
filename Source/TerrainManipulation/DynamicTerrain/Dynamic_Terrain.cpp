@@ -3,6 +3,7 @@
 
 #include "Dynamic_Terrain.h"
 #include "MarchingCubes/MarchingCubesGenerator.h"
+#include "MarchingTetrahedra/MarchingTetrahedraGenerator.h"
 #include "Math/UnrealMathUtility.h"
 #include <memory>
 
@@ -40,6 +41,7 @@ void ADynamic_Terrain::Tick(float DeltaTime)
 
 void ADynamic_Terrain::CalculateMesh()
 {
+	/* Marching Cubes Method
 	std::unique_ptr<ISurfaceGenerationAlgorithm> marchingCubes = std::make_unique<MarchingCubesGenerator>();
 	double sizeX = (topRightAnchor.X - bottomLeftAnchor.X) / (gridPointCount.X - 1);
 	double sizeY = (topRightAnchor.Y - bottomLeftAnchor.Y) / (gridPointCount.Y - 1);
@@ -53,12 +55,14 @@ void ADynamic_Terrain::CalculateMesh()
 		triangles[i] = i;
 	}
 
-	//FDynamicMesh3* mesh = NewObject<FDynamicMesh3>();
-	
-	//UDynamicMesh* dynMesh = NewObject<UDynamicMesh>();
+	dynamicMesh->CreateMeshSection(0, vertices, triangles, {}, {}, {}, {}, true);
+	*/
 
-	//dynamicMesh->SetDynamicMesh(dynMesh);
-	//dynamicMesh->CreateMeshSection(0, vertices, triangles, {}, {}, {}, {}, true);
+	MarchingTetrahedraGenerator* marchingTetrahedra = NewObject<MarchingTetrahedraGenerator>();
+	marchingTetrahedra->dataGrid = TArray3D<float>(dataGrid);
+	FDynamicMesh3 mesh{ marchingTetrahedra };
+
+	dynamicMesh->SetMesh(MoveTemp(mesh));	
 }
 
 FVector ADynamic_Terrain::GetLocalPositionOfGridPoint(int x, int y, int z) const
