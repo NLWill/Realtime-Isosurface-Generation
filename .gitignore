@@ -14,3 +14,6 @@ Saved
 *.xcworkspace
 
 [Bb]uild/
+
+# Ignore calculations for data tables
+*.xlsx
