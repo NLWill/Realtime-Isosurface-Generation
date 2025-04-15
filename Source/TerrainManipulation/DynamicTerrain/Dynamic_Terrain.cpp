@@ -44,7 +44,7 @@ void ADynamic_Terrain::BeginPlay()
 
 	dynamicMesh = Cast<UDynamicMeshComponent>(RootComponent);
 	auto mesh = RegenerateByHand();
-	UpdateMesh(mesh);
+	UpdateDynamicMesh(mesh);
 
 	//CalculateMesh();
 }
@@ -76,15 +76,11 @@ void ADynamic_Terrain::CalculateMesh()
 	*/
 
 	MarchingTetrahedraGenerator marchingTetrahedra = MarchingTetrahedraGenerator(dataGrid);
+	marchingTetrahedra.isovalue = isovalue;
 	
 	FDynamicMesh3 mesh = marchingTetrahedra.Generate();
 
-	if (dynamicMesh != nullptr) {
-		dynamicMesh->SetMesh(MoveTemp(mesh));
-	}
-	else {
-		UE_LOG(LogTemp, Display, TEXT("dynamicMesh is nullptr"))
-	}
+	UpdateDynamicMesh(mesh);
 }
 
 FVector ADynamic_Terrain::GetLocalPositionOfGridPoint(int x, int y, int z) const
@@ -256,13 +252,16 @@ UE::Geometry::FDynamicMesh3 ADynamic_Terrain::RegenerateByHand()
 	return mesh;
 }
 
-void ADynamic_Terrain::UpdateMesh(UE::Geometry::FDynamicMesh3 mesh)
+void ADynamic_Terrain::UpdateDynamicMesh(UE::Geometry::FDynamicMesh3 mesh)
 {
-	auto root = Cast<UDynamicMeshComponent>(GetRootComponent());
+	if (dynamicMesh == nullptr) {
+		dynamicMesh = Cast<UDynamicMeshComponent>(GetRootComponent());
+	}
 
-	if (root) {
-		*(root->GetMesh()) = mesh;
-		root->NotifyMeshUpdated();
+	if (dynamicMesh) {
+		//*(dynamicMesh->GetMesh()) = mesh;
+		dynamicMesh->SetMesh(MoveTemp(mesh));
+		dynamicMesh->NotifyMeshUpdated();
 	}
 	else {
 		UE_LOG(LogTemp, Warning, TEXT("No Mesh Component"));

@@ -95,7 +95,7 @@ private:
 	void InitialiseDataGrid();
 
 	UE::Geometry::FDynamicMesh3 RegenerateByHand();
-	void UpdateMesh(UE::Geometry::FDynamicMesh3 mesh);
+	void UpdateDynamicMesh(UE::Geometry::FDynamicMesh3 mesh);
 
 	TArray3D<float> dataGrid;
 };
