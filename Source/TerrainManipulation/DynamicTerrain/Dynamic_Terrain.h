@@ -36,6 +36,9 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
 	UDynamicMeshComponent* dynamicMesh;
 
+	UPROPERTY(EditAnywhere)
+	bool enableCollision = true;
+
 public:
 	// Sets default values for this actor's properties
 	ADynamic_Terrain();

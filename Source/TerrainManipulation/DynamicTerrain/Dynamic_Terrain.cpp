@@ -40,13 +40,20 @@ void ADynamic_Terrain::BeginPlay()
 {
 	Super::BeginPlay();
 
-	InitialiseDataGrid();
-
+	// Mandatory set here as dynamicMesh would turn to nullptr after the constructor for some reason
 	dynamicMesh = Cast<UDynamicMeshComponent>(RootComponent);
-	auto mesh = RegenerateByHand();
-	UpdateDynamicMesh(mesh);
 
-	//CalculateMesh();
+	InitialiseDataGrid();
+	
+	//auto mesh = RegenerateByHand();
+	//UpdateDynamicMesh(mesh);
+
+	CalculateMesh();
+
+	if (enableCollision) {
+		dynamicMesh->SetCollisionProfileName("BlockAll");
+		dynamicMesh->EnableComplexAsSimpleCollision();
+	}
 }
 
 // Called every frame
@@ -58,27 +65,39 @@ void ADynamic_Terrain::Tick(float DeltaTime)
 
 void ADynamic_Terrain::CalculateMesh()
 {
-	/* Marching Cubes Method
-	std::unique_ptr<ISurfaceGenerationAlgorithm> marchingCubes = std::make_unique<MarchingCubesGenerator>();
-	double sizeX = (topRightAnchor.X - bottomLeftAnchor.X) / (gridPointCount.X - 1);
-	double sizeY = (topRightAnchor.Y - bottomLeftAnchor.Y) / (gridPointCount.Y - 1);
-	double sizeZ = (topRightAnchor.Z - bottomLeftAnchor.Z) / (gridPointCount.Z - 1);
-	TArray<FVector> vertices = marchingCubes->RunAlgorithm(dataGrid, FVector(sizeX, sizeY, sizeZ), bottomLeftAnchor, isovalue);
+	bool useMarchingCubes = true;
 
-	TArray<int32> triangles;
-	triangles.Init(0, vertices.Num());
-	for (size_t i = 0; i < triangles.Num(); i++)
+	double sizeX = (topRightAnchor.X - bottomLeftAnchor.X) / (dataGrid.GetSize(0) - 1);
+	double sizeY = (topRightAnchor.Y - bottomLeftAnchor.Y) / (dataGrid.GetSize(1) - 1);
+	double sizeZ = (topRightAnchor.Z - bottomLeftAnchor.Z) / (dataGrid.GetSize(2) - 1);
+	FVector gridCellDimensions = FVector(sizeX, sizeY, sizeZ);
+
+	FDynamicMesh3 mesh;
+
+	if (useMarchingCubes) 
 	{
-		triangles[i] = i;
+		// Marching Cubes Method
+		std::unique_ptr<ISurfaceGenerationAlgorithm> marchingCubes = std::make_unique<MarchingCubesGenerator>();
+		TArray<FVector> vertices = marchingCubes->RunAlgorithm(dataGrid, gridCellDimensions, bottomLeftAnchor, isovalue);
+
+		for (size_t i = 0; i < vertices.Num(); i+=3)
+		{
+			mesh.AppendVertex(vertices[i]);
+			mesh.AppendVertex(vertices[i + 1]);
+			mesh.AppendVertex(vertices[i + 2]);
+			mesh.AppendTriangle(i, i + 1, i + 2);
+		}
 	}
+	else
+	{
+		MarchingTetrahedraGenerator marchingTetrahedra = MarchingTetrahedraGenerator(dataGrid);
+		marchingTetrahedra.isovalue = isovalue;
+		marchingTetrahedra.gridCellDimensions = gridCellDimensions;
 
-	dynamicMesh->CreateMeshSection(0, vertices, triangles, {}, {}, {}, {}, true);
-	*/
+		mesh = marchingTetrahedra.Generate();
+	}	
 
-	MarchingTetrahedraGenerator marchingTetrahedra = MarchingTetrahedraGenerator(dataGrid);
-	marchingTetrahedra.isovalue = isovalue;
-	
-	FDynamicMesh3 mesh = marchingTetrahedra.Generate();
+	UE_LOG(LogTemp, Display, TEXT("Number of tris in mesh: %d"), mesh.TriangleCount())
 
 	UpdateDynamicMesh(mesh);
 }
@@ -254,14 +273,15 @@ UE::Geometry::FDynamicMesh3 ADynamic_Terrain::RegenerateByHand()
 
 void ADynamic_Terrain::UpdateDynamicMesh(UE::Geometry::FDynamicMesh3 mesh)
 {
-	if (dynamicMesh == nullptr) {
+	if (dynamicMesh == nullptr)
+	{
 		dynamicMesh = Cast<UDynamicMeshComponent>(GetRootComponent());
 	}
 
-	if (dynamicMesh) {
-		//*(dynamicMesh->GetMesh()) = mesh;
+	if (dynamicMesh) 
+	{
 		dynamicMesh->SetMesh(MoveTemp(mesh));
-		dynamicMesh->NotifyMeshUpdated();
+		dynamicMesh->NotifyMeshUpdated();		
 	}
 	else {
 		UE_LOG(LogTemp, Warning, TEXT("No Mesh Component"));
