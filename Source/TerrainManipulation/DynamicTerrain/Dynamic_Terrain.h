@@ -34,7 +34,7 @@ protected:
 
 	// The procedural mesh component containing the mesh data that will be rendered in-game
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
-	class UDynamicMeshComponent* dynamicMesh;
+	UDynamicMeshComponent* dynamicMesh;
 
 public:
 	// Sets default values for this actor's properties
@@ -93,6 +93,9 @@ private:
 	/// Initialise the data grid to some structured values for testing
 	/// </summary>
 	void InitialiseDataGrid();
+
+	UE::Geometry::FDynamicMesh3 RegenerateByHand();
+	void UpdateMesh(UE::Geometry::FDynamicMesh3 mesh);
 
 	TArray3D<float> dataGrid;
 };
