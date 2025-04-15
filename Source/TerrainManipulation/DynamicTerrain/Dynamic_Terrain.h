@@ -39,6 +39,9 @@ protected:
 	UPROPERTY(EditAnywhere)
 	bool enableCollision = true;
 
+	UPROPERTY(EditAnywhere)
+	bool useMarchingCubes;
+
 public:
 	// Sets default values for this actor's properties
 	ADynamic_Terrain();

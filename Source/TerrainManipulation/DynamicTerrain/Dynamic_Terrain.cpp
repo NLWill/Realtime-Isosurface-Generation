@@ -65,8 +65,6 @@ void ADynamic_Terrain::Tick(float DeltaTime)
 
 void ADynamic_Terrain::CalculateMesh()
 {
-	bool useMarchingCubes = true;
-
 	double sizeX = (topRightAnchor.X - bottomLeftAnchor.X) / (dataGrid.GetSize(0) - 1);
 	double sizeY = (topRightAnchor.Y - bottomLeftAnchor.Y) / (dataGrid.GetSize(1) - 1);
 	double sizeZ = (topRightAnchor.Z - bottomLeftAnchor.Z) / (dataGrid.GetSize(2) - 1);

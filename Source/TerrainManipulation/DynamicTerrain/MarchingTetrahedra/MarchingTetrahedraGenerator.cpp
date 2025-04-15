@@ -213,7 +213,7 @@ TArray<FVector3d> MarchingTetrahedraGenerator::InterpolateVerticesOnEdges(const 
 	{
 		if (tetrahedronEdgeTable[tetraIndex] & 1 << i)
 		{
-			std::pair<int, int> vertices = cubeVerticesOnEdge[i];
+			std::pair<int, int> vertices = tetrahedronVerticesOnEdge[i];
 			FVector interpolatedPoint = InterpolateEdge(tetra.positions[vertices.first], tetra.positions[vertices.second], tetra.values[vertices.first], tetra.values[vertices.second]);
 			interpolatedVertices[i] = interpolatedPoint;
 		}
