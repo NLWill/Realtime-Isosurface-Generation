@@ -4,6 +4,13 @@
 #include "MarchingTetrahedraGenerator.h"
 #include <vector>
 
+
+#define DEBUG_MARCHING_TETRA true
+
+#if DEBUG_MARCHING_TETRA
+#include <chrono>
+#endif
+
 using namespace UE::Geometry;
 
 MarchingTetrahedraGenerator::MarchingTetrahedraGenerator()
@@ -28,6 +35,11 @@ MarchingTetrahedraGenerator::MarchingTetrahedraGenerator(const MarchingTetrahedr
 
 FDynamicMesh3 MarchingTetrahedraGenerator::Generate()
 {
+#if DEBUG_MARCHING_TETRA
+	// Measure the time taken to perform the algorithm
+	auto start = std::chrono::high_resolution_clock::now();
+#endif
+
 	generatedMesh.Clear();
 
 	// Perform the algorithm to determine the number of triangles
@@ -40,7 +52,25 @@ FDynamicMesh3 MarchingTetrahedraGenerator::Generate()
 		GenerateOnCPU();
 	}	
 
-	// A generator should always return a reference to itself
+#if DEBUG_MARCHING_TETRA
+	auto finish = std::chrono::high_resolution_clock::now();
+
+	auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(finish - start);
+	if (microseconds.count() > 1000 * 1000) {
+		double floatingPointMicroseconds = (double)microseconds.count();
+		UE_LOG(LogTemp, Display, TEXT("Marching tetrahedra recalculation took %fs"), floatingPointMicroseconds / (1000 * 1000));
+	}
+	else if (microseconds.count() > 1000) {
+		double floatingPointMicroseconds = (double)microseconds.count();
+		UE_LOG(LogTemp, Display, TEXT("Marching tetrahedra recalculation took %fms"), floatingPointMicroseconds / 1000);
+	}
+	else {
+		UE_LOG(LogTemp, Display, TEXT("Marching tetrahedra recalculation took %dµs"), microseconds.count());
+	}
+
+#endif
+
+	// Return the FDynamicMesh3
 	return generatedMesh;
 }
 
@@ -232,12 +262,10 @@ FVector3d MarchingTetrahedraGenerator::InterpolateEdge(FVector3d vertex1, FVecto
 {
 	if (FMath::Abs(value2 - value1) < 1e-5) {
 		// There is significant risk of floating point errors and division by zero, so return vertex1
-		UE_LOG(LogTemp, Display, TEXT("Rounding Risk, defaulting to vertex 1"))
 		return vertex1;
 	}
 
 	float interpolant = (isovalue - value1) / (value2 - value1);
-	UE_LOG(LogTemp, Display, TEXT("Interpolant = %f"), interpolant)
 
 	return vertex1 + (vertex2 - vertex1) * interpolant;
 }
@@ -254,7 +282,6 @@ void MarchingTetrahedraGenerator::GenerateTrianglesFromTetrahedron(int tetraInde
 	{
 		for (int i = 0; i < 3; i++)
 		{
-			UE_LOG(LogTemp, Display, TEXT("Appending Vertex: %s"), *(interpolatedVertexList[tetrahedronTriTable[tetraIndex][i]]).ToString());
 			interpolatedVertexIDs[i] = generatedMesh.AppendVertex(interpolatedVertexList[tetrahedronTriTable[tetraIndex][i]]);
 		}
 		generatedMesh.AppendTriangle(interpolatedVertexIDs[0], interpolatedVertexIDs[1], interpolatedVertexIDs[2]);

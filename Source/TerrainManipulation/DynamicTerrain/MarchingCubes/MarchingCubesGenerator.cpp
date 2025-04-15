@@ -3,7 +3,7 @@
 
 #include "MarchingCubesGenerator.h"
 
-#define DEBUG_MARCHING_CUBES false
+#define DEBUG_MARCHING_CUBES true
 
 #if DEBUG_MARCHING_CUBES
 #include <chrono>

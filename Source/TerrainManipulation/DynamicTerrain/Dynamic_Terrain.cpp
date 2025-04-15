@@ -95,7 +95,7 @@ void ADynamic_Terrain::CalculateMesh()
 		mesh = marchingTetrahedra.Generate();
 	}	
 
-	UE_LOG(LogTemp, Display, TEXT("Number of tris in mesh: %d"), mesh.TriangleCount())
+	//UE_LOG(LogTemp, Display, TEXT("Number of tris in mesh: %d"), mesh.TriangleCount())
 
 	UpdateDynamicMesh(mesh);
 }
