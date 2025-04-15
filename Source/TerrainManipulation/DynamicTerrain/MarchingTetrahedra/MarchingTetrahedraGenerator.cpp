@@ -130,7 +130,8 @@ bool MarchingTetrahedraGenerator::TriangulateGridCell(const FGridCell& gridCell)
 	if (cubeEdgeTable[cubeIndex] == 0) return false;
 
 	// Interpolate edges
-	TArray<FVector3d> interpolatedEdges = InterpolateVerticesOnEdges(gridCell, cubeIndex);
+	// Less efficient, but delay until tetrahedral level for simplicity
+	//TArray<FVector3d> interpolatedEdges = InterpolateVerticesOnEdges(gridCell, cubeIndex);
 
 	// Iterate over each tetrahedron
 	FTetrahedron tetra{};
@@ -190,7 +191,7 @@ TArray<FVector3d> MarchingTetrahedraGenerator::InterpolateVerticesOnEdges(const 
 		if (cubeEdgeTable[cubeIndex] & 1 << i)
 		{
 			std::pair<int, int> vertices = cubeVerticesOnEdge[i];
-			FVector interpolatedPoint = InterpolateEdge(gridCell.positions[vertices.first], gridCell.positions[vertices.second], gridCell.values[vertices.first], gridCell.values[vertices.second]);
+			FVector3d interpolatedPoint = InterpolateEdge(gridCell.positions[vertices.first], gridCell.positions[vertices.second], gridCell.values[vertices.first], gridCell.values[vertices.second]);
 			interpolatedVertices[i] = interpolatedPoint;
 		}
 		else
@@ -214,7 +215,7 @@ TArray<FVector3d> MarchingTetrahedraGenerator::InterpolateVerticesOnEdges(const 
 		if (tetrahedronEdgeTable[tetraIndex] & 1 << i)
 		{
 			std::pair<int, int> vertices = tetrahedronVerticesOnEdge[i];
-			FVector interpolatedPoint = InterpolateEdge(tetra.positions[vertices.first], tetra.positions[vertices.second], tetra.values[vertices.first], tetra.values[vertices.second]);
+			FVector3d interpolatedPoint = InterpolateEdge(tetra.positions[vertices.first], tetra.positions[vertices.second], tetra.values[vertices.first], tetra.values[vertices.second]);
 			interpolatedVertices[i] = interpolatedPoint;
 		}
 		else
@@ -231,10 +232,12 @@ FVector3d MarchingTetrahedraGenerator::InterpolateEdge(FVector3d vertex1, FVecto
 {
 	if (FMath::Abs(value2 - value1) < 1e-5) {
 		// There is significant risk of floating point errors and division by zero, so return vertex1
+		UE_LOG(LogTemp, Display, TEXT("Rounding Risk, defaulting to vertex 1"))
 		return vertex1;
 	}
 
 	float interpolant = (isovalue - value1) / (value2 - value1);
+	UE_LOG(LogTemp, Display, TEXT("Interpolant = %f"), interpolant)
 
 	return vertex1 + (vertex2 - vertex1) * interpolant;
 }
@@ -251,6 +254,7 @@ void MarchingTetrahedraGenerator::GenerateTrianglesFromTetrahedron(int tetraInde
 	{
 		for (int i = 0; i < 3; i++)
 		{
+			UE_LOG(LogTemp, Display, TEXT("Appending Vertex: %s"), *(interpolatedVertexList[tetrahedronTriTable[tetraIndex][i]]).ToString());
 			interpolatedVertexIDs[i] = generatedMesh.AppendVertex(interpolatedVertexList[tetrahedronTriTable[tetraIndex][i]]);
 		}
 		generatedMesh.AppendTriangle(interpolatedVertexIDs[0], interpolatedVertexIDs[1], interpolatedVertexIDs[2]);

@@ -177,14 +177,26 @@ void ADynamic_Terrain::InitialiseDataGrid()
 {
 	dataGrid = TArray3D<float>(gridPointCount.X, gridPointCount.Y, gridPointCount.Z);
 
+	int generationStrategy = 0;
+	// 0 = Random
+	// 1 = Spherical
+
 	for (int i = 0; i < gridPointCount.X; i++)
 	{
 		for (int j = 0; j < gridPointCount.Y; j++)
 		{
 			for (int k = 0; k < gridPointCount.Z; k++)
 			{
-				//dataGrid.SetElement(i, j, k, FMath::RandRange(0, 1));
-				dataGrid.SetElement(i, j, k, -FMath::Sqrt((double)FMath::Square(i) + FMath::Square(j) + FMath::Square(k)));
+				switch (generationStrategy) {
+				case 0:
+					dataGrid.SetElement(i, j, k, FMath::RandRange(0, 1));
+					break;
+				case 1:
+					dataGrid.SetElement(i, j, k, -FMath::Sqrt((double)FMath::Square(i) + FMath::Square(j) + FMath::Square(k)));
+					break;
+				default:
+					dataGrid.SetElement(i, j, k, 0);
+				}
 			}
 		}
 	}
