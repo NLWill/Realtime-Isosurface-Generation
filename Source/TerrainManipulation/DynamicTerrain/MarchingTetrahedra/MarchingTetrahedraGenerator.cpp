@@ -142,12 +142,12 @@ void MarchingTetrahedraGenerator::InitialiseGridCell(FGridCell& gridCell, const 
 	}
 }
 
-void MarchingTetrahedraGenerator::InitialiseTetrahedron(FTetrahedron& tetra, const FGridCell& gridCell, const int tetraID)
+void MarchingTetrahedraGenerator::InitialiseTetrahedron(FTetrahedron& tetra, const FGridCell& gridCell, const int tetrahedronNumber)
 {
 	for (size_t i = 0; i < 4; i++)
 	{
-		tetra.positions[i] = gridCell.positions[tetrahedronList[tetraID][i]];
-		tetra.values[i] = gridCell.values[tetrahedronList[tetraID][i]];
+		tetra.cornerIndices[i] = tetrahedronList[tetrahedronNumber][i];
+		tetra.values[i] = gridCell.values[tetrahedronList[tetrahedronNumber][i]];
 	}
 }
 
@@ -160,21 +160,21 @@ bool MarchingTetrahedraGenerator::TriangulateGridCell(const FGridCell& gridCell)
 	if (cubeEdgeTable[cubeIndex] == 0) return false;
 
 	// Interpolate edges
-	// Less efficient, but delay until tetrahedral level for simplicity
-	//TArray<FVector3d> interpolatedEdges = InterpolateVerticesOnEdges(gridCell, cubeIndex);
+	// Edges are interpolated for the cube to remove duplicate interpolation calculations
+	TArray<FVector3d> interpolatedEdgesInCube = InterpolateVerticesOnEdges(gridCell, cubeIndex);
 
 	// Iterate over each tetrahedron
 	FTetrahedron tetra{};
 	for (int i = 0; i < 6; i++)
 	{
 		InitialiseTetrahedron(tetra, gridCell, i);
-		bool trianglesAdded = TriangulateTetrahedron(tetra);
+		bool trianglesAdded = TriangulateTetrahedron(tetra, interpolatedEdgesInCube);
 	}
 
 	return true;
 }
 
-bool MarchingTetrahedraGenerator::TriangulateTetrahedron(const FTetrahedron& tetra)
+bool MarchingTetrahedraGenerator::TriangulateTetrahedron(const FTetrahedron& tetra, const TArray<FVector3d>& interpolatedEdgesInCube)
 {
 	// Firstly determine the tetrahedrons's unique index based upon which vertices are above/below the isovalue
 	int tetraIndex = CalculateTetrahedronIndex(tetra);
@@ -182,10 +182,7 @@ bool MarchingTetrahedraGenerator::TriangulateTetrahedron(const FTetrahedron& tet
 	// If all vertices are inside or all outside, no triangles need to be constructed, so return false
 	if (tetrahedronEdgeTable[tetraIndex] == 0) return false;
 
-	// Interpolate edges
-	TArray<FVector3d> interpolatedEdges = InterpolateVerticesOnEdges(tetra, tetraIndex);
-
-	GenerateTrianglesFromTetrahedron(tetraIndex, interpolatedEdges);
+	GenerateTrianglesFromTetrahedron(tetra, tetraIndex, interpolatedEdgesInCube);
 
 	return true;
 }
@@ -234,30 +231,6 @@ TArray<FVector3d> MarchingTetrahedraGenerator::InterpolateVerticesOnEdges(const 
 	return interpolatedVertices;
 }
 
-TArray<FVector3d> MarchingTetrahedraGenerator::InterpolateVerticesOnEdges(const FTetrahedron& tetra, const int tetraIndex)
-{
-	TArray<FVector3d> interpolatedVertices;
-	interpolatedVertices.Init(FVector3d::ZeroVector, 6);
-	// Iterate over the 6 edges of the tetrahedron
-	// If the surface does cross this edge, find the interpolation point, otherwise write a zero vector
-	for (int i = 0; i < 6; i++)
-	{
-		if (tetrahedronEdgeTable[tetraIndex] & 1 << i)
-		{
-			std::pair<int, int> vertices = tetrahedronVerticesOnEdge[i];
-			FVector3d interpolatedPoint = InterpolateEdge(tetra.positions[vertices.first], tetra.positions[vertices.second], tetra.values[vertices.first], tetra.values[vertices.second]);
-			interpolatedVertices[i] = interpolatedPoint;
-		}
-		else
-		{
-			// This edge will not be used in calculations, so pad the list with zero vector
-			//interpolatedVertices[i] = FVector3d::ZeroVector;
-			// No need as the array is initialised with this anyway
-		}
-	}
-	return interpolatedVertices;
-}
-
 FVector3d MarchingTetrahedraGenerator::InterpolateEdge(FVector3d vertex1, FVector3d vertex2, float value1, float value2)
 {
 	if (FMath::Abs(value2 - value1) < 1e-5) {
@@ -270,19 +243,41 @@ FVector3d MarchingTetrahedraGenerator::InterpolateEdge(FVector3d vertex1, FVecto
 	return vertex1 + (vertex2 - vertex1) * interpolant;
 }
 
-void MarchingTetrahedraGenerator::GenerateTrianglesFromTetrahedron(int tetraIndex, const TArray<FVector3d>& interpolatedVertexList)
+void MarchingTetrahedraGenerator::GenerateTrianglesFromTetrahedron(const FTetrahedron& tetra, int tetraIndex, const TArray<FVector3d>& interpolatedEdgesInCube)
 {
 	// Store the ids of the vertices within the Vertices array
 	TArray<int> interpolatedVertexIDs;
 	interpolatedVertexIDs.Init(-1, 4);
 
+	// Translate all interpolated edge values from the cube into the tetrahedral space
+	TArray<FVector3d> interpolatedEdgesInTetrahedronSpace;
+	for (int i = 0; i < 6; i++)
+	{
+		std::pair<int, int> tetraVertices = tetrahedronVerticesOnEdge[i];
+		std::pair<int, int> cubeVertices;
+		cubeVertices.first = tetra.cornerIndices[tetraVertices.first];
+		cubeVertices.second = tetra.cornerIndices[tetraVertices.second];
+		int edgeID = cubeVertexPairToEdge[cubeVertices.first][cubeVertices.second];
+		if (edgeID != -1) 
+		{
+			interpolatedEdgesInTetrahedronSpace.Add(interpolatedEdgesInCube[edgeID]);
+		}
+		else 
+		{
+			// Edge ID should never return -1 as it is a sign of a disconnect between data table definitions
+			interpolatedEdgesInTetrahedronSpace.Add(FVector3d::ZeroVector);
+		}
+		
+	}
 
 	// Check at least one triangle is required
+	// It should be required, due to tetraIndex checks in the TriangulateTetrahedron function
 	if (tetrahedronTriTable[tetraIndex][2] != -1)
 	{
 		for (int i = 0; i < 3; i++)
 		{
-			interpolatedVertexIDs[i] = generatedMesh.AppendVertex(interpolatedVertexList[tetrahedronTriTable[tetraIndex][i]]);
+			interpolatedVertexIDs[i] = generatedMesh.AppendVertex(interpolatedEdgesInTetrahedronSpace[tetrahedronTriTable[tetraIndex][i]]);
+			//interpolatedVertexIDs[i] = generatedMesh.AppendVertex(interpolatedVertexList[tetrahedronTriTable[tetraIndex][i]]);
 		}
 		generatedMesh.AppendTriangle(interpolatedVertexIDs[0], interpolatedVertexIDs[1], interpolatedVertexIDs[2]);
 	}
@@ -292,7 +287,7 @@ void MarchingTetrahedraGenerator::GenerateTrianglesFromTetrahedron(int tetraInde
 	if (tetrahedronTriTable[tetraIndex][3] != -1) 
 	{
 		// Append the final required vertex from the triangle strip
-		interpolatedVertexIDs[3] = generatedMesh.AppendVertex(interpolatedVertexList[tetrahedronTriTable[tetraIndex][3]]);
+		interpolatedVertexIDs[3] = generatedMesh.AppendVertex(interpolatedEdgesInTetrahedronSpace[tetrahedronTriTable[tetraIndex][3]]);
 		// Reverse the direction of the vertices otherwise the triangle will point the wrong way
 		generatedMesh.AppendTriangle(interpolatedVertexIDs[3], interpolatedVertexIDs[2], interpolatedVertexIDs[1]);
 	}

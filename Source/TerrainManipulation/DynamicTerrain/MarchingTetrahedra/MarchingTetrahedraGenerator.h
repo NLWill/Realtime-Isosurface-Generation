@@ -31,10 +31,11 @@ public:
 	bool bGPUCompute = false;
 
 protected:
+	// The mesh that shall be returned after the algorithm is complete
 	UE::Geometry::FDynamicMesh3 generatedMesh = UE::Geometry::FDynamicMesh3::FDynamicMesh3();
 
 public:
-	// Generate the mesh
+	// Run the Marching Tetrahedra algorithm to create a new FDynamicMesh3
 	virtual UE::Geometry::FDynamicMesh3 Generate();
 
 protected:
@@ -58,43 +59,44 @@ protected:
 	// Pass Tetrahedra around to simplify the GridCell even further
 	struct FTetrahedron
 	{
-		FVector3d positions[4];    // positions of corners of cell
-		double values[4];      // field values at corners
+		int cornerIndices[4];	// The cube vertex indices that make up this tetrahedron
+		double values[4];		// field values at corners
 	};
 
 	/// <summary>
 	/// Set the values of the gridCell struct based upon the lowest gridIndex coordinate
 	/// </summary>
-	/// <param name="gridCell"></param>
-	/// <param name="gridIndex"></param>
+	/// <param name="gridCell">An FGridCell struct containing the positions and values of the 8 vertices in a cube</param>
+	/// <param name="gridIndex">The minimal index of the data grid to uniquely define this cubic cell</param>
 	void InitialiseGridCell(FGridCell& gridCell, const UE::Geometry::FVector3i& gridIndex);
 
 	/// <summary>
 	/// Set the values of the tetrahedron based upon the tetrahedron ID
 	/// </summary>
-	/// <param name="tetra"></param>
-	/// <param name="gridCell"></param>
-	/// <param name="tetraID"></param>
-	void InitialiseTetrahedron(FTetrahedron& tetra, const FGridCell& gridCell, const int tetraID);
+	/// <param name="tetra">An FTetrahedra struct containing the relevant corners of the cube and their values</param>
+	/// <param name="gridCell">An FGridCell struct containing the positions and values of the 8 vertices in a cube</param>
+	/// <param name="tetrahedronNumber">The number of the tetrahedron within the cube, ranging from 0 - 5</param>
+	void InitialiseTetrahedron(FTetrahedron& tetra, const FGridCell& gridCell, const int tetrahedronNumber);
 
 	/// <summary>
 	/// Determine all triangles that will be made from this grid cell
 	/// </summary>
-	/// <param name="gridCell"></param>
-	/// <returns></returns>
+	/// <param name="gridCell">An FGridCell struct containing the positions and values of the 8 vertices in a cube</param>
+	/// <returns>Returns true if a triangle was added to the mesh</returns>
 	bool TriangulateGridCell(const FGridCell& gridCell);
 
 	/// <summary>
 	/// Determine all triangles that will be made from this tetrahedron
 	/// </summary>
-	/// <param name="tetra"></param>
-	/// <returns></returns>
-	bool TriangulateTetrahedron(const FTetrahedron& tetra);
+	/// <param name="tetra">An FTetrahedra struct containing the relevant corners of the cube and their values</param>
+	/// <param name="interpolatedEdgesInCube">The interpolated edges of the cube</param>
+	/// <returns>Returns true if a triangle was added to the mesh</returns>
+	bool TriangulateTetrahedron(const FTetrahedron& tetra, const TArray<FVector3d>& interpolatedEdgesInCube);
 
 	/// <summary>
 	/// Calculate the unique index of the cube based upon whether the points fall inside or outside the isovalue
 	/// </summary>
-	/// <param name="gridCell">An FGridCell struct containing the indexes and values of the 8 vertices in a cube</param>
+	/// <param name="gridCell">An FGridCell struct containing the positions and values of the 8 vertices in a cube</param>
 	/// <returns>The unique identifier describing which vertices are inside/outside the isosurface</returns>
 	int CalculateCubeIndex(const FGridCell& gridCell) const;
 
@@ -105,22 +107,43 @@ protected:
 	/// <returns>The unique identifier describing which vertices are inside/outside the isosurface</returns>
 	int CalculateTetrahedronIndex(const FTetrahedron& tetra) const;
 
-
+	/// <summary>
+	/// Interpolate all of the edges of the cube that will be required by any of the tetrahedra
+	/// </summary>
+	/// <param name="gridCell">An FGridCell struct containing the positions and values of the 8 vertices in a cube</param>
+	/// <param name="cubeIndex">The unique index to represent which corners of the cube are inside/outside the isosurface</param>
+	/// <returns></returns>
 	TArray<FVector3d> InterpolateVerticesOnEdges(const FGridCell& gridCell, const int cubeIndex);
-	TArray<FVector3d> InterpolateVerticesOnEdges(const FTetrahedron& tetra, const int tetraIndex);
 
+	/// <summary>
+	/// Linearly interpolate between two vertices and their values to find the point where the isosurface intersects
+	/// </summary>
+	/// <param name="isovalue">The isovalue at which the surface will be drawn</param>
+	/// <param name="vertex1">The world-space position of the first vertex</param>
+	/// <param name="vertex2">The world-space position of the second vertex</param>
+	/// <param name="value1">The value of the scalar field at vertex1</param>
+	/// <param name="value2">The value of the scalar field at vertex2</param>
+	/// <returns>The world-space position of the interpolated vertex</returns>
 	FVector3d InterpolateEdge(FVector3d vertex1, FVector3d vertex2, float value1, float value2);
 
-	void GenerateTrianglesFromTetrahedron(int tetraIndex, const TArray<FVector3d>& interpolatedVertexList);
+	/// <summary>
+	/// Generate all triangles required for this tetrahedron and add them to the generatedMesh
+	/// </summary>
+	/// <param name="tetra">An FTetrahedron struct containing the indexes and values of the 4 associated vertices</param>
+	/// <param name="tetraIndex">The unique index to represent which corners of the tetrahedron are inside/outside the isosurface</param>
+	/// <param name="interpolatedEdgesInCube">The interpolated edges of the cube</param>
+	void GenerateTrianglesFromTetrahedron(const FTetrahedron& tetra, int tetraIndex, const TArray<FVector3d>& interpolatedEdgesInCube);
 
-
+	/// <summary>
+	/// A list of the cube vertices that make up each of the six tetrahedra contained in the cube
+	/// </summary>
 	const int tetrahedronList[6][4] = {
-		{0, 2, 3, 7},
-		{0, 6, 2, 7},
-		{0, 4, 6, 7},
-		{0, 6, 1, 2},
-		{0, 1, 6, 4},
-		{5, 6, 1, 4}
+		{0, 1, 2, 4},
+		{1, 2, 4, 5},
+		{2, 4, 5, 6},
+		{0, 2, 3, 4},
+		{2, 3, 4, 7},
+		{2, 7, 4, 6}
 	};
 
 	/// <summary>
@@ -192,6 +215,9 @@ protected:
 		{0, 2}, {4, 6}, {2, 4}
 	};
 
+	/// <summary>
+	/// A 2D array giving the edge ID that links each pair of vertices. -1 represents no edge present
+	/// </summary>
 	const int cubeVertexPairToEdge[8][8] = {
 		{-1, 0, 16, 3, 8, -1, -1, -1},
 		{0, -1, 1, -1, 12, 9, -1, -1},
