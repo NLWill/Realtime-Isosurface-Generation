@@ -192,6 +192,17 @@ protected:
 		{0, 2}, {4, 6}, {2, 4}
 	};
 
+	const int cubeVertexPairToEdge[8][8] = {
+		{-1, 0, 16, 3, 8, -1, -1, -1},
+		{0, -1, 1, -1, 12, 9, -1, -1},
+		{16, 1, -1, 2, 18, 13, 10, 14},
+		{3, -1, 2, -1, 15, -1, -1, 11},
+		{8, 12, 18, 15, -1, 4, 17, 7},
+		{-1, 9, 13, -1, 4, -1, 5, -1},
+		{-1, -1, 10, -1, 17, 5, -1, 6},
+		{-1, -1, 14, 11, 7, -1, 6, -1},
+	};
+
 	/// <summary>
 	/// List of edges required for each cube index. Bit 2^i is used to represent whether edge i is required.
 	/// </summary>
