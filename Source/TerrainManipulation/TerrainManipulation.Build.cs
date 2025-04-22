@@ -8,6 +8,7 @@ public class TerrainManipulation : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "ProceduralMeshComponent", "GeometryFramework", "GeometryCore", "DynamicMesh" });
+		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "ProceduralMeshComponent", "GeometryFramework", "GeometryCore", "DynamicMesh", "CallableComputeShaders", "SimpleComputeShaders" });
+		PrivateDependencyModuleNames.AddRange(new string[] { "CallableComputeShaders", "SimpleComputeShaders" });
 	}
 }

@@ -7,6 +7,8 @@
 #include "Math/UnrealMathUtility.h"
 #include <memory>
 
+#include "SimpleComputeShaders/Public/BasicComputeShader/BasicComputeShader.h"
+
 // Sets default values
 ADynamic_Terrain::ADynamic_Terrain()
 {
@@ -96,6 +98,20 @@ void ADynamic_Terrain::CalculateMesh()
 	}	
 
 	//UE_LOG(LogTemp, Display, TEXT("Number of tris in mesh: %d"), mesh.TriangleCount())
+	FBasicComputeShaderDispatchParams computeShaderParams(1, 1, 1);
+	int inp1 = 31, inp2 = 11;
+	computeShaderParams.Input[0] = inp1;
+	computeShaderParams.Input[1] = inp2;
+
+	TFunction<void (int)> asyncCallback = [inp1, inp2](int result) {	UE_LOG(LogTemp, Display, TEXT("C++ compute shader, %d * %d = %d"), inp1, inp2, result)};
+	FBasicComputeShaderInterface::Dispatch(computeShaderParams, 
+		[inp1, inp2](int result) 
+		{	
+			// Begin compute shader callback
+			UE_LOG(LogTemp, Display, TEXT("C++ compute shader, %d * %d = %d"), inp1, inp2, result)
+			// End compute shader callback
+		});
+
 
 	UpdateDynamicMesh(mesh);
 }
