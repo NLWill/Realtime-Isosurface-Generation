@@ -19,6 +19,16 @@
 			"Name": "CallableComputeShaders",
 			"Type": "Runtime",
 			"LoadingPhase": "Default"
+		},
+		{
+			"Name": "SimpleComputeShaders",
+			"Type": "Runtime",
+			"LoadingPhase": "PostConfigInit"
+		},
+		{
+			"Name": "MarchingTetrahedraComputeShader",
+			"Type": "Runtime",
+			"LoadingPhase": "PostConfigInit"
 		}
 	]
 }

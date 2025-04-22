@@ -60,6 +60,7 @@ void ADynamic_Terrain::BeginPlay()
 
 	int totalSamples = 230001;
 	FDemoPiComputeShaderDispatchParams piParams(totalSamples, 1, 1);
+	piParams.Seed = 0.3f;
 	FDemoPiComputeShaderInterface::Dispatch(piParams, [totalSamples](int result) {UE_LOG(LogTemp, Display, TEXT("Pi result = %d/%d, which is equivalent to %f"), result, totalSamples, (double)result / (double)totalSamples)});
 }
 

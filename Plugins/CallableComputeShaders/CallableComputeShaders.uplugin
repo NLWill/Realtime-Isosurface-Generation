@@ -24,6 +24,11 @@
 			"Name": "SimpleComputeShaders",
 			"Type": "Runtime",
 			"LoadingPhase": "PostConfigInit"
+		},
+		{
+			"Name": "IsosurfaceComputeShaders",
+			"Type": "Runtime",
+			"LoadingPhase": "PostConfigInit"
 		}
 	]
 }
