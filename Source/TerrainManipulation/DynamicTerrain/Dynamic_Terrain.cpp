@@ -8,6 +8,7 @@
 #include <memory>
 
 #include "SimpleComputeShaders/Public/BasicComputeShader/BasicComputeShader.h"
+#include "SimpleComputeShaders/Public/DemoPiComputeShader/DemoPiComputeShader.h"
 
 // Sets default values
 ADynamic_Terrain::ADynamic_Terrain()
@@ -56,6 +57,10 @@ void ADynamic_Terrain::BeginPlay()
 		dynamicMesh->SetCollisionProfileName("BlockAll");
 		dynamicMesh->EnableComplexAsSimpleCollision();
 	}
+
+	int totalSamples = 230001;
+	FDemoPiComputeShaderDispatchParams piParams(totalSamples, 1, 1);
+	FDemoPiComputeShaderInterface::Dispatch(piParams, [totalSamples](int result) {UE_LOG(LogTemp, Display, TEXT("Pi result = %d/%d, which is equivalent to %f"), result, totalSamples, (double)result / (double)totalSamples)});
 }
 
 // Called every frame
