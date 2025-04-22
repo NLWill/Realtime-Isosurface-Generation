@@ -99,6 +99,7 @@ void ADynamic_Terrain::CalculateMesh()
 		MarchingTetrahedraGenerator marchingTetrahedra = MarchingTetrahedraGenerator(dataGrid);
 		marchingTetrahedra.isovalue = isovalue;
 		marchingTetrahedra.gridCellDimensions = gridCellDimensions;
+		marchingTetrahedra.bGPUCompute = false;
 
 		mesh = marchingTetrahedra.Generate();
 	}	
