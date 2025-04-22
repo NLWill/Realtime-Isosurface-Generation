@@ -265,7 +265,7 @@ void MarchingTetrahedraGenerator::GenerateTrianglesFromTetrahedron(const FTetrah
 		else 
 		{
 			// Edge ID should never return -1 as it is a sign of a disconnect between data table definitions
-			interpolatedEdgesInTetrahedronSpace.Add(FVector3d::ZeroVector);
+			UE_LOG(LogTemp, Fatal, TEXT("Vertex pair %d and %d do not form a valid edge."), cubeVertices.first, cubeVertices.second)
 		}
 		
 	}
