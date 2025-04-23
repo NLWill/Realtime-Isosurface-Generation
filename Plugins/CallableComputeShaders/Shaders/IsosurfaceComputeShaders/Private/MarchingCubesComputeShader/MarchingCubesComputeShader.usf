@@ -1,44 +1,84 @@
 #include "/Engine/Public/Platform.ush"
 
+struct FTriangle
+{
+	float3 vert1;
+	float3 vert2;
+	float3 vert3;
+};
+
+struct FGridCell
+{
+	float3 positions[8];
+	float values[8];
+};
+
 // Perform marching cubes on a subsection of the data grid
-RWBuffer<float3> outputVertexTriplets;
+globallycoherent AppendStructuredBuffer<FTriangle> outputTriangles;
 uint vertexTripletIndex = 0;
 
 Buffer<float> dataGridValues;
-int3 gridPointCount;
+uint3 gridPointCount;
 float3 gridSizePerCube;
 float3 zeroNodeOffset;
 
 float isovalue;
 
-// Convert 3D coordinates into the single array index using little-endian notation
-int GetArrayIndex(int x, int y, int z)
+bool IsValidIndex(uint x, uint y, uint z)
 {
-    if (x >= gridPointCount.x || y >= gridPointCount.y || z >= gridPointCount.z) 
+	if (x < 0 || x >= gridPointCount.x)
+		return false;
+	if (y < 0 || y >= gridPointCount.y)
+		return false;
+	if (z < 0 || z >= gridPointCount.z)
+		return false;
+	
+	return true;
+}
+
+bool IsValidIndex(uint3 coord)
+{
+	return IsValidIndex(coord.x, coord.y, coord.z);
+}
+
+// Convert 3D coordinates into the single array index using little-endian notation
+uint GetArrayIndex(uint x, uint y, uint z)
+{
+	if (x >= gridPointCount.x || y >= gridPointCount.y || z >= gridPointCount.z) 
 	{
 		return -1;
 	}
 
-	int xComponent = x;
-    int yComponent = y * gridPointCount.x;
-    int zComponent = z * gridPointCount.x * gridPointCount.y;
+	uint xComponent = x;
+	uint yComponent = y * gridPointCount.x;
+	uint zComponent = z * gridPointCount.x * gridPointCount.y;
 	return zComponent + yComponent + xComponent;
 }
 
-/// Convert internal array reference into grid coordinates
-int3 GetGridReference(int index)
+uint GetArrayIndex(uint3 coord)
 {
-    int x = index % gridPointCount.x;
-    int y = (index / gridPointCount.x) % gridPointCount.y;
-    int z = (index / (gridPointCount.x * gridPointCount.y)) % gridPointCount.z;
-	return int3(x, y, z);
+	return GetArrayIndex(coord.x, coord.y, coord.z);
 }
 
-struct FGridCell
+/// Convert internal array reference into grid coordinates
+uint3 GetGridReference(uint index)
 {
-    float3 positions[8];
-    float values[8];
-};
+	uint x = index % gridPointCount.x;
+	uint y = (index / gridPointCount.x) % gridPointCount.y;
+	uint z = (index / (gridPointCount.x * gridPointCount.y)) % gridPointCount.z;
+	return uint3(x, y, z);
+}
+
+uint CalculateCubeIndex(FGridCell gridCell)
+{
+    uint cubeIndex = 0;
+    for (uint i = 0; i < 8; i++)
+    {
+        if (gridCell.values[i] > isovalue)
+            cubeIndex |= (1 << i);
+    }
+    return cubeIndex;
+}
 
 float3 InterpolateVertices(float4 vec1, float4 vec2)
 {
@@ -50,7 +90,7 @@ float3 InterpolateVertices(float4 vec1, float4 vec2)
 		return vec1.xyz;
 	
 	float interpolant = (isovalue - vec1.w) / (vec2.w - vec1.w);
-    interpolant = clamp(interpolant, 0, 1);
+	interpolant = clamp(interpolant, 0, 1);
 	return vec1.xyz + interpolant * (vec2.xyz - vec1.xyz);
 }
 
@@ -59,6 +99,31 @@ void MarchingCubesComputeShader(
 	uint3 DispatchThreadId : SV_DispatchThreadID,
 	uint GroupIndex : SV_GroupIndex )
 {
+	// Determine which grid cell should be calculated
+	uint3 gridCellToBeTriangulated = DispatchThreadId;
+	// Check whether this is a valid grid cell and return if not
+	if (!IsValidIndex(gridCellToBeTriangulated))
+	{
+		return;
+	}
+	
+	// Create the gridCell
+	FGridCell gridCell;
+	for (uint i = 0; i < 8; i++)
+	{
+		uint3 workingCoordinate = gridCellToBeTriangulated + vertexOrder[i];
+		gridCell.positions[i] = zeroNodeOffset + float3(workingCoordinate.x * gridSizePerCube.x, workingCoordinate.y * gridSizePerCube.y, workingCoordinate.z * gridSizePerCube.z);
+		gridCell.values[i] = dataGridValues[GetArrayIndex(workingCoordinate)];
+	}
+	
+	// Calculate the unique cube index
+    uint cubeIndex = CalculateCubeIndex(gridCell);
+	
+	// Check if the cube configuration requires any triangles
+    if (edgeTable[cubeIndex] == 0)
+        return;
+	
+	// Interpolate the required vertices
 	
 	
 	bool isCreatingTriangle = true;
@@ -67,15 +132,28 @@ void MarchingCubesComputeShader(
 		uint designatedIndex;
 		InterlockedAdd(vertexTripletIndex, 3, designatedIndex);
 		outputVertexTriplets[designatedIndex] = float3(0, 0, 0);
-        outputVertexTriplets[designatedIndex + 1] = float3(0, 100, 0);
-        outputVertexTriplets[designatedIndex + 2] = float3(100, 100, 0);
-    }
+		outputVertexTriplets[designatedIndex + 1] = float3(0, 100, 0);
+		outputVertexTriplets[designatedIndex + 2] = float3(100, 100, 0);
+	}
 }
 
 // Supporting data
 
+/// The ordering of the vertices, as defined by Paul Bourke
+const uint3 vertexOrder[8] =
+{
+	{ 0, 0, 0 },
+	{ 1, 0, 0 },
+	{ 1, 1, 0 },
+	{ 0, 1, 0 },
+	{ 0, 0, 1 },
+	{ 1, 0, 1 },
+	{ 1, 1, 1 },
+	{ 0, 1, 1 }
+};
+
 /// For each edge id, the vertex ids that connect this edge
-const int2 verticesOnEdge[12] =
+const uint2 verticesOnEdge[12] =
 {
 	{0, 1}, {1, 2}, {2, 3}, {0, 3},
 	{4, 5}, {5, 6}, {6, 7}, {4, 7},
@@ -83,7 +161,7 @@ const int2 verticesOnEdge[12] =
 };
 
 // List of edges required for each cube index. Bit 2^i is used to represent whether edge i is required.
-const int edgeTable[256] =
+const uint edgeTable[256] =
 {
 	0x0, 0x109, 0x203, 0x30a, 0x406, 0x50f, 0x605, 0x70c,
 	0x80c, 0x905, 0xa0f, 0xb06, 0xc0a, 0xd03, 0xe09, 0xf00,
