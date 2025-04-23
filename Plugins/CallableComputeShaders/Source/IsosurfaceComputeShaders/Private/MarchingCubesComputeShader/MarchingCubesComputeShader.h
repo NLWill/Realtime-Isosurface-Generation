@@ -25,6 +25,6 @@
 #include "RenderGraphResources.h"
 #include "Runtime/Engine/Classes/Engine/TextureRenderTarget2D.h"
 
-#define NUM_THREADS_MarchingCubesComputeShader_X 32
-#define NUM_THREADS_MarchingCubesComputeShader_Y 1
-#define NUM_THREADS_MarchingCubesComputeShader_Z 1
+#define NUM_THREADS_MarchingCubesComputeShader_X 8
+#define NUM_THREADS_MarchingCubesComputeShader_Y 8
+#define NUM_THREADS_MarchingCubesComputeShader_Z 8
