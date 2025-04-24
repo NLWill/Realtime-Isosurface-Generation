@@ -15,8 +15,9 @@ struct FGridCell
 };
 
 // Perform marching cubes on a subsection of the data grid
-globallycoherent AppendStructuredBuffer<FTriangle> outputTriangles;
-uint vertexTripletIndex = 0;
+//globallycoherent AppendStructuredBuffer<FTriangle> outputTriangles;
+globallycoherent RWBuffer<float3> outputVertexTriplets;
+globallycoherent uint vertexTripletIndex = 0;
 
 Buffer<float> dataGridValues;
 uint3 gridPointCount;
@@ -81,16 +82,16 @@ uint CalculateCubeIndex(FGridCell gridCell)
     return cubeIndex;
 }
 
-float3 InterpolateVertices(float4 vec1, float4 vec2)
+float3 InterpolateEdge(float3 vec1, float3 vec2, float val1, float val2)
 {
-	if (abs(vec1.w - isovalue) < 1e-5)
+	if (abs(val1 - isovalue) < 1e-5)
 		return vec1.xyz;
-	if (abs(vec2.w - isovalue) < 1e-5)
+	if (abs(val2 - isovalue) < 1e-5)
 		return vec2.xyz;
-	if (abs(vec1.w - vec2.w) < 1e-5)
+	if (abs(val1 - val2) < 1e-5)
 		return vec1.xyz;
 	
-	float interpolant = (isovalue - vec1.w) / (vec2.w - vec1.w);
+	float interpolant = (isovalue - val1) / (val2 - val1);
 	interpolant = clamp(interpolant, 0, 1);
 	return vec1.xyz + interpolant * (vec2.xyz - vec1.xyz);
 }
@@ -125,16 +126,42 @@ void MarchingCubesComputeShader(
         return;
 	
 	// Interpolate the required vertices
+    float3 interpolatedVertices[12];
+	// Iterate over the 12 edges of the cube
+	// If the surface does cross this edge, find the interpolation point, otherwise write a zero vector
+    for (uint i = 0; i < 12; i++)
+    {
+        if (edgeTable[cubeIndex] & 1 << i)
+        {
+            int2 vertices = verticesOnEdge[i];
+            float3 interpolatedPoint = InterpolateEdge(gridCell.positions[vertices.x], gridCell.positions[vertices.y], gridCell.values[vertices.x], gridCell.values[vertices.y]);
+            interpolatedVertices[i] = interpolatedPoint;
+        }
+        else
+        {
+			// This edge will not be used in calculations, so pad the list with zero vector
+            interpolatedVertices[i] = float3(0, 0, 0);
+        }
+    }
 	
-	
-	bool isCreatingTriangle = true;
-	if (isCreatingTriangle)
-	{
-		uint designatedIndex;
-		InterlockedAdd(vertexTripletIndex, 3, designatedIndex);
-		outputVertexTriplets[designatedIndex] = float3(0, 0, 0);
-		outputVertexTriplets[designatedIndex + 1] = float3(0, 100, 0);
-		outputVertexTriplets[designatedIndex + 2] = float3(100, 100, 0);
-	}
+	// Generate the required triangles
+	// Each triad of vertices on the triTable represent a valid triangle for this cube index
+	// Iterate over the triangles and add them to the total list of needed triangles
+    for (uint i = 0; triTable[cubeIndex][i] != -1; i += 3)
+    {
+		// Method 1 using tri structs
+        //FTriangle tri;
+        //tri.vert1 = interpolatedVertices[triTable[cubeIndex][i]];
+        //tri.vert2 = interpolatedVertices[triTable[cubeIndex][i + 1]];
+        //tri.vert3 = interpolatedVertices[triTable[cubeIndex][i + 2]];
+        //outputTriangles.Append(tri);
+		
+		// Method 2 returning triplets of vertices
+        uint designatedIndex;
+        InterlockedAdd(vertexTripletIndex, 3, designatedIndex);
+        outputVertexTriplets[designatedIndex] = interpolatedVertices[triTable[cubeIndex][i]];
+        outputVertexTriplets[designatedIndex + 1] = interpolatedVertices[triTable[cubeIndex][i + 1]];
+        outputVertexTriplets[designatedIndex + 2] = interpolatedVertices[triTable[cubeIndex][i + 2]];
+    }
 }
 
