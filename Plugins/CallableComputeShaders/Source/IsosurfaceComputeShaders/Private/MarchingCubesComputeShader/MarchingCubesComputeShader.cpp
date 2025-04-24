@@ -53,9 +53,15 @@ public:
 
 		// SHADER_PARAMETER_STRUCT_REF(FMyCustomStruct, MyCustomStruct)
 
-		
-		SHADER_PARAMETER(float, Seed)
-		SHADER_PARAMETER_RDG_BUFFER_UAV(RWBuffer<uint32>, Output)
+		// Input
+		SHADER_PARAMETER_SRV(Buffer<float>, dataGridValues)
+		SHADER_PARAMETER(FIntVector3, gridPointCount)
+		SHADER_PARAMETER(FVector3f, gridSizePerCube)
+		SHADER_PARAMETER(FVector3f, zeroNodeOffset)
+
+		// Output
+		SHADER_PARAMETER(uint32, vertexTripletIndex)
+		SHADER_PARAMETER_UAV(RWBuffer<FVector3f>, outputVertexTriplets)
 		
 
 	END_SHADER_PARAMETER_STRUCT()
