@@ -14,16 +14,22 @@ struct ISOSURFACECOMPUTESHADERS_API FMarchingCubesComputeShaderDispatchParams
 	int Y;
 	int Z;
 
-	
-	float Seed;
+	TArray<float> dataGridValues;
+	FIntVector3 gridPointCount;
+	FVector3f gridSizePerCube;
+	FVector3f zeroNodeOffset;
 	
 	
 
-	FMarchingCubesComputeShaderDispatchParams(int x, int y, int z)
-		: X(x)
-		, Y(y)
-		, Z(z)
+	FMarchingCubesComputeShaderDispatchParams(int groupCountX, int groupCountY, int groupCountZ)
+		: X(groupCountX)
+		, Y(groupCountY)
+		, Z(groupCountZ)
 	{
+		dataGridValues = TArray<float>();
+		gridPointCount = FIntVector3(0, 0, 0);
+		gridSizePerCube = FVector3f(100, 100, 100);	// Default to some non-zero size so that is it visible
+		zeroNodeOffset = FVector3f(0, 0, 0);
 	}
 };
 

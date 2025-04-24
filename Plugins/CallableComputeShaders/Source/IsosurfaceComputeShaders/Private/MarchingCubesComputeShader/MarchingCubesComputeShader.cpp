@@ -105,7 +105,8 @@ private:
 //                            ShaderType                            ShaderPath                     Shader function name    Type
 IMPLEMENT_GLOBAL_SHADER(FMarchingCubesComputeShader, "/IsosurfaceComputeShadersShaders/MarchingCubesComputeShader/MarchingCubesComputeShader.usf", "MarchingCubesComputeShader", SF_Compute);
 
-void FMarchingCubesComputeShaderInterface::DispatchRenderThread(FRHICommandListImmediate& RHICmdList, FMarchingCubesComputeShaderDispatchParams Params, TFunction<void(int OutputVal)> AsyncCallback) {
+void FMarchingCubesComputeShaderInterface::DispatchRenderThread(FRHICommandListImmediate& RHICmdList, FMarchingCubesComputeShaderDispatchParams Params, TFunction<void(int OutputVal)> AsyncCallback) 
+{
 	FRDGBuilder GraphBuilder(RHICmdList);
 
 	{
@@ -127,11 +128,12 @@ void FMarchingCubesComputeShaderInterface::DispatchRenderThread(FRHICommandListI
 		if (bIsShaderValid) {
 			FMarchingCubesComputeShader::FParameters* PassParameters = GraphBuilder.AllocParameters<FMarchingCubesComputeShader::FParameters>();
 
-			
+			// Create a buffer to contain the output
 			FRDGBufferRef OutputBuffer = GraphBuilder.CreateBuffer(
 				FRDGBufferDesc::CreateBufferDesc(sizeof(int32), 1),
 				TEXT("OutputBuffer"));
 
+			// Associate the output buffer to the relevant output list
 			PassParameters->Output = GraphBuilder.CreateUAV(FRDGBufferUAVDesc(OutputBuffer, PF_R32_SINT));
 			
 
@@ -183,5 +185,22 @@ void FMarchingCubesComputeShaderInterface::DispatchRenderThread(FRHICommandListI
 		}
 	}
 
+	GraphBuilder.Execute();
+}
+
+void AddPass(FRHICommandListImmediate& RHICmdList, FMarchingCubesComputeShaderDispatchParams params, TFunction<void(int OutputVal)> AsyncCallback) 
+{
+	FRDGBuilder GraphBuilder(RHICmdList);
+
+	FMarchingCubesComputeShader::FParameters* passParameters = GraphBuilder.AllocParameters<FMarchingCubesComputeShader::FParameters>();
+
+	passParameters->dataGridValues = params.dataGridValues;
+	passParameters->gridPointCount = params.gridPointCount;
+	passParameters->gridSizePerCube = params.gridSizePerCube;
+	passParameters->zeroNodeOffset = params.zeroNodeOffset;
+
+
+
+	// Execute the graph.
 	GraphBuilder.Execute();
 }
