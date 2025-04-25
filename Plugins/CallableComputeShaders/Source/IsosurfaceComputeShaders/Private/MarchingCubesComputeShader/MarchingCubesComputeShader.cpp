@@ -1,7 +1,7 @@
+#include "IsosurfaceComputeShaders/Public/MarchingCubesComputeShader/MarchingCubesComputeShader.h"
 #include "CanvasTypes.h"
 #include "DynamicMeshBuilder.h"
 #include "GlobalShader.h"
-#include "IsosurfaceComputeShaders/Public/MarchingCubesComputeShader/MarchingCubesComputeShader.h"
 #include "MarchingCubesComputeShader.h"
 #include "MaterialShader.h"
 #include "MeshDrawShaderBindings.h"
@@ -58,6 +58,7 @@ public:
 		SHADER_PARAMETER(FIntVector3, gridPointCount)
 		SHADER_PARAMETER(FVector3f, gridSizePerCube)
 		SHADER_PARAMETER(FVector3f, zeroNodeOffset)
+		SHADER_PARAMETER(float, isovalue)
 
 		// Output
 		SHADER_PARAMETER_RDG_BUFFER_UAV(RWBuffer<uint32>, vertexTripletIndex)
@@ -218,6 +219,7 @@ void FMarchingCubesComputeShaderInterface::DispatchRenderThread(FRHICommandListI
 		passParameters->gridPointCount = params.gridPointCount;
 		passParameters->gridSizePerCube = params.gridSizePerCube;
 		passParameters->zeroNodeOffset = params.zeroNodeOffset;
+		passParameters->isovalue = params.isovalue;
 
 		// For Buffers, the data needs to be uploaded to the GPU
 		// Upload the input data buffer
@@ -230,7 +232,8 @@ void FMarchingCubesComputeShaderInterface::DispatchRenderThread(FRHICommandListI
 		passParameters->dataGridValues = GraphBuilder.CreateSRV(FRDGBufferSRVDesc(dataGridBuffer));
 
 		// Create an output buffer
-		int maxPossibleTris = 5 * 3 * (params.gridPointCount.X - 1) * (params.gridPointCount.Y - 1) * (params.gridPointCount.Z - 1);
+		int maxPossibleTris = 5 * 3 * (params.gridPointCount.X - 1) * (params.gridPointCount.Y - 1) * (params.gridPointCount.Z - 1);	
+		// This results in exceeding the max size limit, plus it is incredibly unlikely that all cubes will require all 5 faces
 		FRDGBufferRef outputVertexBuffer = GraphBuilder.CreateBuffer(FRDGBufferDesc::CreateBufferDesc(sizeof(FVector3f), maxPossibleTris), TEXT("outputVertexTriplets"));
 
 		passParameters->outputVertexTriplets = GraphBuilder.CreateUAV(FRDGBufferUAVDesc(outputVertexBuffer));

@@ -14,12 +14,14 @@ struct ISOSURFACECOMPUTESHADERS_API FMarchingCubesComputeShaderDispatchParams
 	FIntVector3 gridPointCount;
 	FVector3f gridSizePerCube;
 	FVector3f zeroNodeOffset;
+	float isovalue;
 
-	FMarchingCubesComputeShaderDispatchParams(TArray<float> dataGridValues, FIntVector3 gridPointCount, FVector3f gridSizePerCube, FVector3f zeroNodeOffset) :
+	FMarchingCubesComputeShaderDispatchParams(TArray<float> dataGridValues, FIntVector3 gridPointCount, FVector3f gridSizePerCube, FVector3f zeroNodeOffset, float isovalue) :
 		dataGridValues(dataGridValues),
 		gridPointCount(gridPointCount),
 		gridSizePerCube(gridSizePerCube),
-		zeroNodeOffset(zeroNodeOffset)
+		zeroNodeOffset(zeroNodeOffset),
+		isovalue(isovalue)
 	{
 	}
 
@@ -97,11 +99,7 @@ public:
 			});
 	}
 
-
-	UPROPERTY(BlueprintAssignable)
 	FOnMarchingCubesComputeShaderLibrary_AsyncExecutionCompleted Completed;
 
-
 	FMarchingCubesComputeShaderDispatchParams params;
-
 };
