@@ -194,12 +194,22 @@ void AddPass(FRHICommandListImmediate& RHICmdList, FMarchingCubesComputeShaderDi
 
 	FMarchingCubesComputeShader::FParameters* passParameters = GraphBuilder.AllocParameters<FMarchingCubesComputeShader::FParameters>();
 
-	passParameters->dataGridValues = params.dataGridValues;
+	// Allocate the trivial data structs to the shader parameters
 	passParameters->gridPointCount = params.gridPointCount;
 	passParameters->gridSizePerCube = params.gridSizePerCube;
 	passParameters->zeroNodeOffset = params.zeroNodeOffset;
 
+	// For Buffers, the data needs to be uploaded to the GPU
+	int numDataGridEntries = params.dataGridValues.Num();
+	FRDGBuffer* dataGridBuffer = GraphBuilder.CreateBuffer(FRDGBufferDesc::CreateUploadDesc(sizeof(float), numDataGridEntries), TEXT("dataGridValues"));
 
+	FRDGUploadData<float> dataGridValues(GraphBuilder, numDataGridEntries);
+
+	for (int i = 0; i < numDataGridEntries; i++) {
+		dataGridValues[i] = params.dataGridValues[i];
+	}
+
+	GraphBuilder.QueueBufferUpload(dataGridBuffer, dataGridValues, ERDGInitialDataFlags::None);
 
 	// Execute the graph.
 	GraphBuilder.Execute();
