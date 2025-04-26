@@ -279,6 +279,7 @@ void FMarchingCubesComputeShaderInterface::DispatchRenderThread(FRHICommandListI
 					TArray<FVector3f> vertexList = TArray<FVector3f>(vertexListBuffer, vertexTripletCount);
 
 					GPUBufferReadbackVertexList->Unlock();
+					//TArray<FVector3f> vertexList = {FVector3f(0,0,0), FVector3f(0,100,0) ,FVector3f(100,100,0)};
 
 					AsyncTask(ENamedThreads::GameThread, [AsyncCallback, vertexList]()
 						{

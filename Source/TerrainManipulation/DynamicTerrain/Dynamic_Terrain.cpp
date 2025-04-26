@@ -84,7 +84,7 @@ void ADynamic_Terrain::CalculateMesh()
 	{
 		// Marching Cubes Method
 		std::unique_ptr<ISurfaceGenerationAlgorithm> marchingCubes = std::make_unique<MarchingCubesGenerator>();
-		marchingCubes->bGPUCompute = false;
+		marchingCubes->bGPUCompute = bUseGPU;
 		TArray<FVector3f> vertices = marchingCubes->RunAlgorithm(dataGrid, gridCellDimensions, bottomLeftAnchor, isovalue);
 
 		for (size_t i = 0; i < vertices.Num(); i+=3)

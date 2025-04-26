@@ -207,6 +207,7 @@ TArray<FVector3f> MarchingCubesGenerator::TriangulateGridGPU(const TArray3D<floa
 	FMarchingCubesComputeShaderInterface::Dispatch(computeShaderParams, [&vertexTripletList](TArray<FVector3f> outputVertexTripletList) 
 		{
 			vertexTripletList = outputVertexTripletList;
+			UE_LOG(LogTemp, Display, TEXT("Completed GPU process"))
 		});
 
 	return vertexTripletList;
