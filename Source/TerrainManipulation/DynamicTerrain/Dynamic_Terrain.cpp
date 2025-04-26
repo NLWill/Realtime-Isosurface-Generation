@@ -53,7 +53,7 @@ void ADynamic_Terrain::BeginPlay()
 
 	CalculateMesh();
 
-	if (enableCollision) {
+	if (bEnableCollision) {
 		dynamicMesh->SetCollisionProfileName("BlockAll");
 		dynamicMesh->EnableComplexAsSimpleCollision();
 	}
@@ -80,7 +80,7 @@ void ADynamic_Terrain::CalculateMesh()
 
 	FDynamicMesh3 mesh;
 
-	if (useMarchingCubes) 
+	if (bUseMarchingCubes) 
 	{
 		// Marching Cubes Method
 		std::unique_ptr<ISurfaceGenerationAlgorithm> marchingCubes = std::make_unique<MarchingCubesGenerator>();

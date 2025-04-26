@@ -37,10 +37,13 @@ protected:
 	UDynamicMeshComponent* dynamicMesh;
 
 	UPROPERTY(EditAnywhere)
-	bool enableCollision = true;
+	bool bEnableCollision = true;
 
 	UPROPERTY(EditAnywhere)
-	bool useMarchingCubes;
+	bool bUseMarchingCubes;
+
+	UPROPERTY(EditAnywhere)
+	bool bUseGPU;
 
 public:
 	// Sets default values for this actor's properties
