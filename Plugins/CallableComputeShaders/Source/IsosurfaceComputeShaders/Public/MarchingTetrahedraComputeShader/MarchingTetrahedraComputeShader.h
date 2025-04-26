@@ -10,20 +10,31 @@
 
 struct ISOSURFACECOMPUTESHADERS_API FMarchingTetrahedraComputeShaderDispatchParams
 {
-	int X;
-	int Y;
-	int Z;
+	TArray<float> dataGridValues;
+	FIntVector3 gridPointCount;
+	FVector3f gridSizePerCube;
+	FVector3f zeroNodeOffset;
+	float isovalue;
 
-	
+	int totalSamples = 10000;
 	float Seed;
-	
-	
 
-	FMarchingTetrahedraComputeShaderDispatchParams(int x, int y, int z)
-		: X(x)
-		, Y(y)
-		, Z(z)
+	FMarchingTetrahedraComputeShaderDispatchParams(const TArray<float>& dataGridValues, FIntVector3 gridPointCount, FVector3f gridSizePerCube, FVector3f zeroNodeOffset, float isovalue) :
+		dataGridValues(dataGridValues),
+		gridPointCount(gridPointCount),
+		gridSizePerCube(gridSizePerCube),
+		zeroNodeOffset(zeroNodeOffset),
+		isovalue(isovalue)
 	{
+	}
+
+	FMarchingTetrahedraComputeShaderDispatchParams()
+	{
+		dataGridValues = TArray<float>();
+		gridPointCount = FIntVector3(0, 0, 0);
+		gridSizePerCube = FVector3f(0, 0, 0);
+		zeroNodeOffset = FVector3f(0, 0, 0);
+		isovalue = 0;
 	}
 };
 
@@ -77,38 +88,22 @@ class ISOSURFACECOMPUTESHADERS_API UMarchingTetrahedraComputeShaderLibrary_Async
 public:
 	
 	// Execute the actual load
-	virtual void Activate() override {
-		// Create a dispatch parameters struct and set our desired seed
-		FMarchingTetrahedraComputeShaderDispatchParams Params(TotalSamples, 1, 1);
-		Params.Seed = Seed;
-
+	virtual void Activate() override 
+	{
 		// Dispatch the compute shader and wait until it completes
 		FMarchingTetrahedraComputeShaderInterface::Dispatch(Params, [this](int TotalInCircle) {
 			// TotalInCircle is set to the result of the compute shader
 			// Divide by the total number of samples to get the ratio of samples in the circle
 			// We're multiplying by 4 because the simulation is done in quarter-circles
-			double FinalPI = ((double) TotalInCircle / (double) TotalSamples);
+			double FinalPI = ((double) TotalInCircle / (double) Params.totalSamples);
 
 			Completed.Broadcast(FinalPI);
 		});
-	}
-	
-	UFUNCTION(BlueprintCallable, meta = (BlueprintInternalUseOnly = "true", Category = "ComputeShader", WorldContext = "WorldContextObject"))
-	static UMarchingTetrahedraComputeShaderLibrary_AsyncExecution* ExecutePIComputeShader(UObject* WorldContextObject, int TotalSamples, float Seed) {
-		UMarchingTetrahedraComputeShaderLibrary_AsyncExecution* Action = NewObject<UMarchingTetrahedraComputeShaderLibrary_AsyncExecution>();
-		Action->TotalSamples = TotalSamples;
-		Action->Seed = Seed;
-		Action->RegisterWithGameInstance(WorldContextObject);
-
-		return Action;
 	}
 	
 
 	UPROPERTY(BlueprintAssignable)
 	FOnMarchingTetrahedraComputeShaderLibrary_AsyncExecutionCompleted Completed;
 
-	
-	float Seed;
-	int TotalSamples;
-	
+	FMarchingTetrahedraComputeShaderDispatchParams Params;	
 };

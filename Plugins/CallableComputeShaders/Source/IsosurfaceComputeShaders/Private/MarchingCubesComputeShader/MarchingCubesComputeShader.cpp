@@ -231,7 +231,7 @@ void FMarchingCubesComputeShaderInterface::DispatchRenderThread(FRHICommandListI
 
 		FRDGBufferRef dataGridBuffer = CreateUploadBuffer(GraphBuilder, TEXT("dataGridValues"), entrySize, numDataGridEntries, rawData, entrySize * numDataGridEntries);
 
-		passParameters->dataGridValues = GraphBuilder.CreateSRV(FRDGBufferSRVDesc(dataGridBuffer));
+		passParameters->dataGridValues = GraphBuilder.CreateSRV(dataGridBuffer, EPixelFormat::PF_R32_FLOAT);
 
 		// Create an output buffer
 		int maxPossibleTris = 5 * 3 * (params.gridPointCount.X - 1) * (params.gridPointCount.Y - 1) * (params.gridPointCount.Z - 1);	
@@ -255,25 +255,18 @@ void FMarchingCubesComputeShaderInterface::DispatchRenderThread(FRHICommandListI
 		// Add a pass to the shader graph and dispatch it
 		FComputeShaderUtils::AddPass(GraphBuilder, RDG_EVENT_NAME("ExecuteMarchingCubesComputeShader"), ComputeShader, passParameters, groupCount);
 
-		// Temp testing result to give something back to the calling function
-		TArray<FVector3f> vertexList = {FVector3f(0,0,0), FVector3f(0,100,0) ,FVector3f(100,100,0)};
-		AsyncTask(ENamedThreads::GameThread, [AsyncCallback, vertexList]()
-			{
-				AsyncCallback(vertexList);
-			});
-
-		/*
+		
 		// Retrieve the result from the compute shader
 		// Get the vertex count
 		FRHIGPUBufferReadback* GPUBufferReadbackTriangleCount = new FRHIGPUBufferReadback(TEXT("ExecuteMarchingCubesComputeShaderTriangleCountOutput"));
 		AddEnqueueCopyPass(GraphBuilder, GPUBufferReadbackTriangleCount, outputTriangleCountBuffer, 0u);
 		// Get the vertex list
-		FRHIGPUBufferReadback* GPUBufferReadbackVertexList = new FRHIGPUBufferReadback(TEXT("ExecuteMarchingCubesComputeShaderVertexListOutput"));
-		AddEnqueueCopyPass(GraphBuilder, GPUBufferReadbackVertexList, outputVertexBuffer, 0u);
+		//FRHIGPUBufferReadback* GPUBufferReadbackVertexList = new FRHIGPUBufferReadback(TEXT("ExecuteMarchingCubesComputeShaderVertexListOutput"));
+		//AddEnqueueCopyPass(GraphBuilder, GPUBufferReadbackVertexList, outputVertexBuffer, 0u);
 
-		auto RunnerFunc = [GPUBufferReadbackTriangleCount, GPUBufferReadbackVertexList, AsyncCallback](auto&& RunnerFunc) -> void
+		auto RunnerFunc = [GPUBufferReadbackTriangleCount, AsyncCallback](auto&& RunnerFunc) -> void
 			{
-				if (GPUBufferReadbackTriangleCount->IsReady() && GPUBufferReadbackVertexList->IsReady())
+				if (GPUBufferReadbackTriangleCount->IsReady())
 				{
 
 					int32* vertexTripletCountBuffer = (int32*)GPUBufferReadbackTriangleCount->Lock(1);
@@ -281,11 +274,11 @@ void FMarchingCubesComputeShaderInterface::DispatchRenderThread(FRHICommandListI
 
 					GPUBufferReadbackTriangleCount->Unlock();
 
-					FVector3f* vertexListBuffer = (FVector3f*)GPUBufferReadbackVertexList->Lock(vertexTripletCount * sizeof(FVector3f));
-					TArray<FVector3f> vertexList = TArray<FVector3f>(vertexListBuffer, vertexTripletCount);
+					//FVector3f* vertexListBuffer = (FVector3f*)GPUBufferReadbackVertexList->Lock(vertexTripletCount * sizeof(FVector3f));
+					//TArray<FVector3f> vertexList = TArray<FVector3f>(vertexListBuffer, vertexTripletCount);
 
-					GPUBufferReadbackVertexList->Unlock();
-					//TArray<FVector3f> vertexList = {FVector3f(0,0,0), FVector3f(0,100,0) ,FVector3f(100,100,0)};
+					//GPUBufferReadbackVertexList->Unlock();
+					TArray<FVector3f> vertexList = {FVector3f(0,0,0), FVector3f(0,100,0) ,FVector3f(100,100,0)};
 
 					AsyncTask(ENamedThreads::GameThread, [AsyncCallback, vertexList]()
 						{
@@ -293,7 +286,7 @@ void FMarchingCubesComputeShaderInterface::DispatchRenderThread(FRHICommandListI
 						});
 
 					delete GPUBufferReadbackTriangleCount;
-					delete GPUBufferReadbackVertexList;
+					//delete GPUBufferReadbackVertexList;
 				}
 				else {
 					AsyncTask(ENamedThreads::ActualRenderingThread, [RunnerFunc]()
@@ -306,7 +299,7 @@ void FMarchingCubesComputeShaderInterface::DispatchRenderThread(FRHICommandListI
 		AsyncTask(ENamedThreads::ActualRenderingThread, [RunnerFunc]() {
 			RunnerFunc(RunnerFunc);
 			});
-			*/
+			
 	}
 	else
 	{

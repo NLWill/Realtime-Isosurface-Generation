@@ -131,7 +131,7 @@ void FMarchingTetrahedraComputeShaderInterface::DispatchRenderThread(FRHICommand
 			
 
 			//auto GroupCount = FComputeShaderUtils::GetGroupCount(FIntVector(Params.X, Params.Y, Params.Z), FComputeShaderUtils::kGolden2DGroupSize);
-			int totalSamples = Params.X;
+			int totalSamples = Params.totalSamples;
 			int groupSize = NUM_THREADS_MarchingTetrahedraComputeShader_X * NUM_THREADS_MarchingTetrahedraComputeShader_Y * NUM_THREADS_MarchingTetrahedraComputeShader_Z;
 			FIntVector GroupCount(totalSamples * 4 / groupSize, 1, 1);
 

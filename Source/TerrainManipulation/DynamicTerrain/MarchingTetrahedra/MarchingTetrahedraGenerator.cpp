@@ -87,8 +87,10 @@ void MarchingTetrahedraGenerator::GenerateOnGPU()
 	// Run the algorithm
 	int totalSamples = 200000;
 
-	FMarchingTetrahedraComputeShaderDispatchParams params(totalSamples, 1, 1);
+	FIntVector3 gridPointCount(dataGrid.GetSize(0), dataGrid.GetSize(1), dataGrid.GetSize(2));
+	FMarchingTetrahedraComputeShaderDispatchParams params(dataGrid.GetRawDataStruct(), gridPointCount, (FVector3f)gridCellDimensions, FVector3f::ZeroVector, isovalue);
 	params.Seed = 1;
+	params.totalSamples = totalSamples;
 	FMarchingTetrahedraComputeShaderInterface::Dispatch(params, [this, totalSamples](int totalInCircle)
 		{
 			TArray<FVector3f> trialVertexTriplet = { FVector3f(0,0,0), FVector3f(0,100,0) , FVector3f(100,100,0) };
