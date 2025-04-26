@@ -121,6 +121,7 @@ void FMarchingTetrahedraComputeShaderInterface::DispatchRenderThread(FRHICommand
 		if (bIsShaderValid) {
 			FMarchingTetrahedraComputeShader::FParameters* PassParameters = GraphBuilder.AllocParameters<FMarchingTetrahedraComputeShader::FParameters>();
 
+			PassParameters->Seed = Params.Seed;
 			
 			FRDGBufferRef OutputBuffer = GraphBuilder.CreateBuffer(
 				FRDGBufferDesc::CreateBufferDesc(sizeof(int32), 1),
@@ -129,15 +130,12 @@ void FMarchingTetrahedraComputeShaderInterface::DispatchRenderThread(FRHICommand
 			PassParameters->Output = GraphBuilder.CreateUAV(FRDGBufferUAVDesc(OutputBuffer, PF_R32_SINT));
 			
 
-			auto GroupCount = FComputeShaderUtils::GetGroupCount(FIntVector(Params.X, Params.Y, Params.Z), FComputeShaderUtils::kGolden2DGroupSize);
-			GraphBuilder.AddPass(
-				RDG_EVENT_NAME("ExecuteMarchingTetrahedraComputeShader"),
-				PassParameters,
-				ERDGPassFlags::AsyncCompute,
-				[&PassParameters, ComputeShader, GroupCount](FRHIComputeCommandList& RHICmdList)
-			{
-				FComputeShaderUtils::Dispatch(RHICmdList, ComputeShader, *PassParameters, GroupCount);
-			});
+			//auto GroupCount = FComputeShaderUtils::GetGroupCount(FIntVector(Params.X, Params.Y, Params.Z), FComputeShaderUtils::kGolden2DGroupSize);
+			int totalSamples = Params.X;
+			int groupSize = NUM_THREADS_MarchingTetrahedraComputeShader_X * NUM_THREADS_MarchingTetrahedraComputeShader_Y * NUM_THREADS_MarchingTetrahedraComputeShader_Z;
+			FIntVector GroupCount(totalSamples * 4 / groupSize, 1, 1);
+
+			FComputeShaderUtils::AddPass(GraphBuilder, RDG_EVENT_NAME("ExecuteMarchingTetrahedraComputeShader"), ComputeShader, PassParameters, GroupCount);
 
 			
 			FRHIGPUBufferReadback* GPUBufferReadback = new FRHIGPUBufferReadback(TEXT("ExecuteMarchingTetrahedraComputeShaderOutput"));

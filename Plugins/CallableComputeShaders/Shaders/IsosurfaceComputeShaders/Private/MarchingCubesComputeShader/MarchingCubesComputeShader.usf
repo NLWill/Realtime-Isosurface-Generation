@@ -15,9 +15,9 @@ struct FGridCell
 };
 
 // Perform marching cubes on a subsection of the data grid
-//globallycoherent AppendStructuredBuffer<FTriangle> outputTriangles;
-globallycoherent RWBuffer<float3> outputVertexTriplets;
-globallycoherent RWBuffer<uint> vertexTripletIndex;
+//AppendStructuredBuffer<FTriangle> outputTriangles;
+RWBuffer<float3> outputVertexTriplets;
+RWBuffer<uint> vertexTripletIndex;
 
 Buffer<float> dataGridValues;
 uint3 gridPointCount;

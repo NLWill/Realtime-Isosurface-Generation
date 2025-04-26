@@ -31,6 +31,7 @@ struct ISOSURFACECOMPUTESHADERS_API FMarchingCubesComputeShaderDispatchParams
 		gridPointCount = FIntVector3(0, 0, 0);
 		gridSizePerCube = FVector3f(0, 0, 0);
 		zeroNodeOffset = FVector3f(0, 0, 0);
+		isovalue = 0;
 	}
 };
 

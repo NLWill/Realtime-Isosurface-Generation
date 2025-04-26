@@ -134,6 +134,8 @@ protected:
 	/// <param name="interpolatedEdgesInCube">The interpolated edges of the cube</param>
 	void GenerateTrianglesFromTetrahedron(const FTetrahedron& tetra, int tetraIndex, const TArray<FVector3d>& interpolatedEdgesInCube);
 
+	void CreateMeshFromVertexTriplets(const TArray<FVector3f>& vertexTripletList);
+
 	/// <summary>
 	/// A list of the cube vertices that make up each of the six tetrahedra contained in the cube
 	/// </summary>

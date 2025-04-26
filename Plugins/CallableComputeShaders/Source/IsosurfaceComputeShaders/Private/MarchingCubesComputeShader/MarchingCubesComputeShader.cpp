@@ -104,7 +104,8 @@ private:
 
 // This will tell the engine to create the shader and where the shader entry point is.
 //                            ShaderType                            ShaderPath                     Shader function name    Type
-IMPLEMENT_GLOBAL_SHADER(FMarchingCubesComputeShader, "/IsosurfaceComputeShadersShaders/MarchingCubesComputeShader/MarchingCubesComputeShader.usf", "MarchingCubesComputeShader", SF_Compute);
+IMPLEMENT_GLOBAL_SHADER(FMarchingCubesComputeShader, "/IsosurfaceComputeShadersShaders/MarchingCubesComputeShader/MarchingCubesComputeShader.usf", "MarchingCubesComputeShader", EShaderFrequency::SF_Compute);
+
 /*
 void ReferenceScript(FRHICommandListImmediate& RHICmdList, FMarchingCubesComputeShaderDispatchParams Params, TFunction<void(int OutputVal)> AsyncCallback)
 {
@@ -191,6 +192,7 @@ void ReferenceScript(FRHICommandListImmediate& RHICmdList, FMarchingCubesCompute
 	GraphBuilder.Execute();
 }
 */
+
 void FMarchingCubesComputeShaderInterface::DispatchRenderThread(FRHICommandListImmediate& RHICmdList, FMarchingCubesComputeShaderDispatchParams params, TFunction<void(TArray<FVector3f> vertexTripletList)> AsyncCallback)
 {
 	FRDGBuilder GraphBuilder(RHICmdList);
@@ -251,12 +253,16 @@ void FMarchingCubesComputeShaderInterface::DispatchRenderThread(FRHICommandListI
 		FIntVector groupCount(groupCountX, groupCountY, groupCountZ);
 
 		// Add a pass to the shader graph and dispatch it
-		GraphBuilder.AddPass(RDG_EVENT_NAME("ExecuteMarchingCubesComputeShader"), passParameters, ERDGPassFlags::AsyncCompute,
-			[&passParameters, ComputeShader, groupCount](FRHIComputeCommandList& RHIComputeCmdList)
+		FComputeShaderUtils::AddPass(GraphBuilder, RDG_EVENT_NAME("ExecuteMarchingCubesComputeShader"), ComputeShader, passParameters, groupCount);
+
+		// Temp testing result to give something back to the calling function
+		TArray<FVector3f> vertexList = {FVector3f(0,0,0), FVector3f(0,100,0) ,FVector3f(100,100,0)};
+		AsyncTask(ENamedThreads::GameThread, [AsyncCallback, vertexList]()
 			{
-				FComputeShaderUtils::Dispatch(RHIComputeCmdList, ComputeShader, *passParameters, groupCount);
+				AsyncCallback(vertexList);
 			});
 
+		/*
 		// Retrieve the result from the compute shader
 		// Get the vertex count
 		FRHIGPUBufferReadback* GPUBufferReadbackTriangleCount = new FRHIGPUBufferReadback(TEXT("ExecuteMarchingCubesComputeShaderTriangleCountOutput"));
@@ -300,6 +306,7 @@ void FMarchingCubesComputeShaderInterface::DispatchRenderThread(FRHICommandListI
 		AsyncTask(ENamedThreads::ActualRenderingThread, [RunnerFunc]() {
 			RunnerFunc(RunnerFunc);
 			});
+			*/
 	}
 	else
 	{

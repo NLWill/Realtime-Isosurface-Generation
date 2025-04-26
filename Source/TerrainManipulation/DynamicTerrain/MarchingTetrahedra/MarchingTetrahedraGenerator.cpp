@@ -2,6 +2,7 @@
 
 
 #include "MarchingTetrahedraGenerator.h"
+#include "IsosurfaceComputeShaders/Public/MarchingTetrahedraComputeShader/MarchingTetrahedraComputeShader.h"
 #include <vector>
 
 
@@ -84,7 +85,16 @@ void MarchingTetrahedraGenerator::GenerateOnGPU()
 	std::vector<std::vector<FIndex3i>> tris;
 
 	// Run the algorithm
+	int totalSamples = 200000;
 
+	FMarchingTetrahedraComputeShaderDispatchParams params(totalSamples, 1, 1);
+	params.Seed = 1;
+	FMarchingTetrahedraComputeShaderInterface::Dispatch(params, [this, totalSamples](int totalInCircle)
+		{
+			TArray<FVector3f> trialVertexTriplet = { FVector3f(0,0,0), FVector3f(0,100,0) , FVector3f(100,100,0) };
+			UE_LOG(LogTemp, Display, TEXT("Completed compute shader. Pi result = %d/%d, which is equivalent to %f"), totalInCircle, totalSamples, (double)totalInCircle / (double)totalSamples)
+			//CreateMeshFromVertexTriplets(trialVertexTriplet);
+		});
 
 
 	// Populate the vertices and triangles arrays
@@ -290,5 +300,19 @@ void MarchingTetrahedraGenerator::GenerateTrianglesFromTetrahedron(const FTetrah
 		interpolatedVertexIDs[3] = generatedMesh.AppendVertex(interpolatedEdgesInTetrahedronSpace[tetrahedronTriTable[tetraIndex][3]]);
 		// Reverse the direction of the vertices otherwise the triangle will point the wrong way
 		generatedMesh.AppendTriangle(interpolatedVertexIDs[3], interpolatedVertexIDs[2], interpolatedVertexIDs[1]);
+	}
+}
+
+void MarchingTetrahedraGenerator::CreateMeshFromVertexTriplets(const TArray<FVector3f>& vertexTripletList)
+{
+	UE_LOG(LogTemp, Display, TEXT("Finished the Marching Tetrahedra GPU and creating the mesh"))
+
+	for (int i = 0; i < vertexTripletList.Num(); i += 3) 
+	{
+		generatedMesh.AppendVertex((FVector3d)vertexTripletList[i]);
+		generatedMesh.AppendVertex((FVector3d)vertexTripletList[i + 1]);
+		generatedMesh.AppendVertex((FVector3d)vertexTripletList[i + 2]);
+
+		generatedMesh.AppendTriangle(i, i + 1, i + 2);
 	}
 }
