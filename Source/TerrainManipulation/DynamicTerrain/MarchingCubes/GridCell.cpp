@@ -5,18 +5,15 @@
 
 GridCell::GridCell()
 {
-	positions.Init(FVector::ZeroVector, 8);
+	positions.Init(FVector3f::ZeroVector, 8);
 	values.Init(0, 8);
 }
 
-GridCell::GridCell(TArray<FVector> positions, TArray<float> values)
+GridCell::GridCell(TArray<FVector3f> positions, TArray<float> values) : positions(positions), values(values)
 {
 	if (positions.Num() != 8 || values.Num() != 8) {
 		UE_LOG(LogTemp, Fatal, TEXT("Failed to initialise GridCell. Length of arrays was not 8"));
 	}
-
-	this->positions = positions;
-	this->values = values;
 }
 
 GridCell::~GridCell()

@@ -23,7 +23,7 @@ public:
 	/// <param name="offsetOfZeroCell">The position of the (0,0,0) vertex in world space</param>
 	/// <param name="isovalue">The value of the isosurface that this is being created for</param>
 	/// <returns>An array of vectors required to create the triangles of this surface</returns>
-	virtual TArray<FVector> RunAlgorithm(const TArray3D<float>& dataGrid, FVector sizeOfCell, FVector offsetOfZeroCell, float isovalue = 0);
+	virtual TArray<FVector3f> RunAlgorithm(const TArray3D<float>& dataGrid, FVector3f sizeOfCell, FVector3f offsetOfZeroCell, float isovalue = 0);
 
 private:
 	/// <summary>
@@ -39,7 +39,7 @@ private:
 	/// <param name="gridCell">A GridCell struct containing the positions and values of the 8 vertices in a cube</param>
 	/// <param name="isovalue">The isovalue at which the surface will be drawn</param>
 	/// <returns>A vector of the vertices interpolated along each edge</returns>
-	std::vector<FVector> InterpolateVerticesOnEdges(const GridCell& gridCell, float isovalue);
+	std::vector<FVector3f> InterpolateVerticesOnEdges(const GridCell& gridCell, float isovalue);
 	/// <summary>
 	/// Linearly interpolate between two vertices and their values to find the point where the isosurface intersects
 	/// </summary>
@@ -49,21 +49,21 @@ private:
 	/// <param name="value1">The value of the scalar field at vertex1</param>
 	/// <param name="value2">The value of the scalar field at vertex2</param>
 	/// <returns>The world-space position of the interpolated vertex</returns>
-	FVector InterpolateEdge(float isovalue, FVector vertex1, FVector vertex2, float value1, float value2);
+	FVector3f InterpolateEdge(float isovalue, FVector3f vertex1, FVector3f vertex2, float value1, float value2);
 	/// <summary>
 	/// Taking the cube index and vertex list, generate the triangles required for this cell
 	/// </summary>
 	/// <param name="cubeIndex">The unique cube identifier to describe which cells are inside/outside the cell</param>
 	/// <param name="vertexList">The list of vertices interpolated along each edge</param>
 	/// <returns>A vector of positions to create the triangles for this gridCell, with each triad of points representing a triangle</returns>
-	std::vector<FVector> GenerateTriangles(int cubeIndex, const std::vector<FVector>& vertexList);
+	std::vector<FVector3f> GenerateTriangles(int cubeIndex, const std::vector<FVector3f>& vertexList);
 	/// <summary>
 	/// Calculate the triangles required for a singular 2x2x2 grid of vertices
 	/// </summary>
 	/// <param name="gridCell">A GridCell struct containing the positions and values of the 8 vertices in a cube</param>
 	/// <param name="isovalue">The isovalue at which the surface will be drawn</param>
 	/// <returns>A vector of positions to create the triangles for this gridCell, with each triad of points representing a triangle</returns>
-	std::vector<FVector> TriangulateCell(const GridCell& gridCell, float isovalue);
+	std::vector<FVector3f> TriangulateCell(const GridCell& gridCell, float isovalue);
 	/// <summary>
 	/// Iterate over all 2x2x2 cells in the grid and find the triangles required to create the isosurface for the isovalue
 	/// </summary>
@@ -72,12 +72,22 @@ private:
 	/// <param name="offsetOfZeroCell">The position of the (0,0,0) vertex in world space</param>
 	/// <param name="isovalue">The value of the isosurface that this is being created for</param>
 	/// <returns>A vector of positions to create the triangles for the whole grid, with each triad of points representing a triangle</returns>
-	std::vector<FVector> TriangulateGrid(const TArray3D<float>& dataGrid, FVector sizeOfCell, FVector offsetOfZeroCell, float isovalue);
+	std::vector<FVector3f> TriangulateGrid(const TArray3D<float>& dataGrid, FVector3f sizeOfCell, FVector3f offsetOfZeroCell, float isovalue);
+
+	/// <summary>
+	/// Run the marching cubes algorithm on the GPU. Iterate over all 2x2x2 cells in the grid and find the triangles required to create the isosurface for the isovalue
+	/// </summary>
+	/// <param name="dataGrid">The grid of all data values</param>
+	/// <param name="sizeOfCell">The length of each cell along each axis</param>
+	/// <param name="offsetOfZeroCell">The position of the (0,0,0) vertex in world space</param>
+	/// <param name="isovalue">The value of the isosurface that this is being created for</param>
+	/// <returns>A vector of positions to create the triangles for the whole grid, with each triad of points representing a triangle</returns>
+	TArray<FVector3f> TriangulateGridGPU(const TArray3D<float>& dataGrid, FVector3f sizeOfCell, FVector3f offsetOfZeroCell, float isovalue);
 
 	/// <summary>
 	/// The ordering of the vertices, as defined by Paul Bourke
 	/// </summary>
-	const FIntVector vertexOrder[8] = {
+	const FIntVector3 vertexOrder[8] = {
 		{0,0,0},
 		{1,0,0},
 		{1,1,0},

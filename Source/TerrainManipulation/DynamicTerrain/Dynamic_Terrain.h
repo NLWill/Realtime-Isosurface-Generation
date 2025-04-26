@@ -18,11 +18,11 @@ protected:
 
 	// The anchor point for (0,0,0) on the dataGrid (in local coordinates)
 	UPROPERTY(EditAnywhere)
-	FVector bottomLeftAnchor;
+	FVector3f bottomLeftAnchor;
 
 	// The anchor point for the furthest point on the dataGrid (in local coordinates)
 	UPROPERTY(EditAnywhere)
-	FVector topRightAnchor;
+	FVector3f topRightAnchor;
 
 	// The number of grid points along each axis
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
@@ -67,7 +67,7 @@ public:
 	/// <param name="y">Index along Y axis</param>
 	/// <param name="z">Index along Z axis</param>
 	/// <returns>Local position relative to the RootComponent</returns>
-	FVector GetLocalPositionOfGridPoint(int x, int y, int z) const;
+	FVector3d GetLocalPositionOfGridPoint(int x, int y, int z) const;
 	/// <summary>
 	/// Get the local position coordinate of the given grid indices, scaling based upon the two anchors.
 	/// </summary>

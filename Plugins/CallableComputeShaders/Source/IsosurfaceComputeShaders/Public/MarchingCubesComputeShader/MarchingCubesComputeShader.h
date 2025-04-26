@@ -16,7 +16,7 @@ struct ISOSURFACECOMPUTESHADERS_API FMarchingCubesComputeShaderDispatchParams
 	FVector3f zeroNodeOffset;
 	float isovalue;
 
-	FMarchingCubesComputeShaderDispatchParams(TArray<float> dataGridValues, FIntVector3 gridPointCount, FVector3f gridSizePerCube, FVector3f zeroNodeOffset, float isovalue) :
+	FMarchingCubesComputeShaderDispatchParams(const TArray<float>& dataGridValues, FIntVector3 gridPointCount, FVector3f gridSizePerCube, FVector3f zeroNodeOffset, float isovalue) :
 		dataGridValues(dataGridValues),
 		gridPointCount(gridPointCount),
 		gridSizePerCube(gridSizePerCube),

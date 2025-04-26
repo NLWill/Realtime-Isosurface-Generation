@@ -11,9 +11,9 @@ class TERRAINMANIPULATION_API GridCell
 {
 public:
 	GridCell();
-	GridCell(TArray<FVector> positions, TArray<float> values);
+	GridCell(TArray<FVector3f> positions, TArray<float> values);
 	~GridCell();
 
-	TArray<FVector> positions;
+	TArray<FVector3f> positions;
 	TArray<float> values;
 };

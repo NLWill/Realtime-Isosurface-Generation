@@ -19,5 +19,8 @@ public:
 	/// <param name="gridData">The data instructing the composition of the surface</param>
 	/// <param name="bias">The offset to the grid data to adjust where the surface is being constructed</param>
 	/// <returns>An array of vertex IDs required to create the triangles of this surface</returns>
-	virtual TArray<FVector> RunAlgorithm(const TArray3D<float>& gridData, FVector sizeOfCell, FVector offsetOfZeroCell, float isovalue = 0) = 0;
+	virtual TArray<FVector3f> RunAlgorithm(const TArray3D<float>& gridData, FVector3f sizeOfCell, FVector3f offsetOfZeroCell, float isovalue = 0) = 0;
+
+	// Should this generator run in parallel on the GPU?
+	bool bGPUCompute = false;
 };

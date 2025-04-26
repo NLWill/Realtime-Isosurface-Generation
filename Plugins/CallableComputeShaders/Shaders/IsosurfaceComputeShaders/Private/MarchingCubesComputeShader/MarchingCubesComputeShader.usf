@@ -104,7 +104,8 @@ void MarchingCubesComputeShader(
 	// Determine which grid cell should be calculated
 	uint3 gridCellToBeTriangulated = DispatchThreadId;
 	// Check whether this is a valid grid cell and return if not
-	if (!IsValidIndex(gridCellToBeTriangulated))
+	// There is a specific edge case where the bottom left index is valid, but the top right is not, so test the top right one instead
+    if (!IsValidIndex(gridCellToBeTriangulated + uint3(1, 1, 1)))
 	{
 		return;
 	}

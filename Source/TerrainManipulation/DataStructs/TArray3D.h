@@ -63,7 +63,7 @@ public:
 		return data[arrayIndex];
 	}
 
-	TArray<T>& GetRawDataStruct() const 
+	const TArray<T>& GetRawDataStruct() const 
 	{
 		return data;
 	}

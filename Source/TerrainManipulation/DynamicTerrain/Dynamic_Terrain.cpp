@@ -32,8 +32,8 @@ ADynamic_Terrain::ADynamic_Terrain()
 	//dynamicMesh->SetMesh(MoveTemp(mesh));
 
 	gridPointCount = FIntVector3(5, 5, 5);
-	bottomLeftAnchor = FVector::Zero();
-	topRightAnchor = FVector(200, 200, 200);
+	bottomLeftAnchor = FVector3f::Zero();
+	topRightAnchor = FVector3f(200, 200, 200);
 
 	isovalue = 0;
 }
@@ -76,7 +76,7 @@ void ADynamic_Terrain::CalculateMesh()
 	double sizeX = (topRightAnchor.X - bottomLeftAnchor.X) / (dataGrid.GetSize(0) - 1);
 	double sizeY = (topRightAnchor.Y - bottomLeftAnchor.Y) / (dataGrid.GetSize(1) - 1);
 	double sizeZ = (topRightAnchor.Z - bottomLeftAnchor.Z) / (dataGrid.GetSize(2) - 1);
-	FVector gridCellDimensions = FVector(sizeX, sizeY, sizeZ);
+	FVector3f gridCellDimensions = FVector3f(sizeX, sizeY, sizeZ);
 
 	FDynamicMesh3 mesh;
 
@@ -84,13 +84,14 @@ void ADynamic_Terrain::CalculateMesh()
 	{
 		// Marching Cubes Method
 		std::unique_ptr<ISurfaceGenerationAlgorithm> marchingCubes = std::make_unique<MarchingCubesGenerator>();
-		TArray<FVector> vertices = marchingCubes->RunAlgorithm(dataGrid, gridCellDimensions, bottomLeftAnchor, isovalue);
+		marchingCubes->bGPUCompute = false;
+		TArray<FVector3f> vertices = marchingCubes->RunAlgorithm(dataGrid, gridCellDimensions, bottomLeftAnchor, isovalue);
 
 		for (size_t i = 0; i < vertices.Num(); i+=3)
 		{
-			mesh.AppendVertex(vertices[i]);
-			mesh.AppendVertex(vertices[i + 1]);
-			mesh.AppendVertex(vertices[i + 2]);
+			mesh.AppendVertex((FVector3d)vertices[i]);
+			mesh.AppendVertex((FVector3d)vertices[i + 1]);
+			mesh.AppendVertex((FVector3d)vertices[i + 2]);
 			mesh.AppendTriangle(i, i + 1, i + 2);
 		}
 	}
@@ -98,7 +99,7 @@ void ADynamic_Terrain::CalculateMesh()
 	{
 		MarchingTetrahedraGenerator marchingTetrahedra = MarchingTetrahedraGenerator(dataGrid);
 		marchingTetrahedra.isovalue = isovalue;
-		marchingTetrahedra.gridCellDimensions = gridCellDimensions;
+		marchingTetrahedra.gridCellDimensions = (FVector3d)gridCellDimensions;
 		marchingTetrahedra.bGPUCompute = false;
 
 		mesh = marchingTetrahedra.Generate();
@@ -123,7 +124,7 @@ void ADynamic_Terrain::CalculateMesh()
 	UpdateDynamicMesh(mesh);
 }
 
-FVector ADynamic_Terrain::GetLocalPositionOfGridPoint(int x, int y, int z) const
+FVector3d ADynamic_Terrain::GetLocalPositionOfGridPoint(int x, int y, int z) const
 {
 	// Get the x,y,z coordinates to scale between 0 (bottom left) and 1 (top right)
 	double interpolateX = (double)x / (gridPointCount.X - 1);
@@ -150,7 +151,7 @@ void ADynamic_Terrain::AddToDataGridInRadius(FVector centre, float radius, float
 {
 	// Translate from world coordinates to local coordinates
 	FTransform transform = RootComponent->GetComponentTransform();
-	FVector transformedUnscaledGridCoordinates = transform.InverseTransformPosition(centre);
+	FVector transformedUnscaledGridCoordinates = transform.InverseTransformPosition((FVector3d)centre);
 
 	double gridSizeX = (topRightAnchor.X - bottomLeftAnchor.X) / (gridPointCount.X - 1);
 	double gridSizeY = (topRightAnchor.Y - bottomLeftAnchor.Y) / (gridPointCount.Y - 1);
