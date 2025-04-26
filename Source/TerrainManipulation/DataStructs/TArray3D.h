@@ -63,6 +63,11 @@ public:
 		return data[arrayIndex];
 	}
 
+	TArray<T>& GetRawDataStruct() const 
+	{
+		return data;
+	}
+
 	/// <summary>
 	/// Set the value of the element at the specified (x,y,z) coordinates
 	/// </summary>
