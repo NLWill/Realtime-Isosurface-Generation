@@ -121,6 +121,7 @@ void FDemoPiComputeShaderInterface::DispatchRenderThread(FRHICommandListImmediat
 		if (bIsShaderValid) {
 			FDemoPiComputeShader::FParameters* PassParameters = GraphBuilder.AllocParameters<FDemoPiComputeShader::FParameters>();
 
+			PassParameters->Seed = Params.Seed;
 			
 			FRDGBufferRef OutputBuffer = GraphBuilder.CreateBuffer(
 				FRDGBufferDesc::CreateBufferDesc(sizeof(int32), 1),

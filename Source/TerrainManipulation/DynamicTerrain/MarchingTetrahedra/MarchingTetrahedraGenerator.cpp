@@ -3,6 +3,7 @@
 
 #include "MarchingTetrahedraGenerator.h"
 #include "IsosurfaceComputeShaders/Public/MarchingTetrahedraComputeShader/MarchingTetrahedraComputeShader.h"
+#include "SimpleComputeShaders/Public/DemoPiComputeShader/DemoPiComputeShader.h"
 #include <vector>
 
 
@@ -86,6 +87,10 @@ void MarchingTetrahedraGenerator::GenerateOnGPU()
 
 	// Run the algorithm
 	int totalSamples = 200000;
+	FDemoPiComputeShaderDispatchParams piParams(1, 1, 1);
+	piParams.Seed = 0;
+	FDemoPiComputeShaderInterface::Dispatch(piParams, [](int totalInCircle) {UE_LOG(LogTemp, Display, TEXT("A single call of piParams produced %d in circle"), totalInCircle)});
+
 
 	FIntVector3 gridPointCount(dataGrid.GetSize(0), dataGrid.GetSize(1), dataGrid.GetSize(2));
 	FMarchingTetrahedraComputeShaderDispatchParams params(dataGrid.GetRawDataStruct(), gridPointCount, (FVector3f)gridCellDimensions, FVector3f::ZeroVector, isovalue);
