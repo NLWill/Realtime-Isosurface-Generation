@@ -126,14 +126,6 @@ void FMarchingTetrahedraComputeShaderInterface::DispatchRenderThread(FRHICommand
 		if (bIsShaderValid) {
 			FMarchingTetrahedraComputeShader::FParameters* PassParameters = GraphBuilder.AllocParameters<FMarchingTetrahedraComputeShader::FParameters>();
 
-			/*
-			FRDGBufferDesc outputBufferDesc = FRDGBufferDesc::CreateStructuredDesc(sizeof(int32), 1);
-			FRDGBufferDesc outputBufferDesc2 = FRDGBufferDesc::CreateBufferDesc(sizeof(int32), 1);
-			FRDGBufferRef OutputBuffer = GraphBuilder.CreateBuffer(outputBufferDesc, TEXT("OutputBuffer"));
-
-			PassParameters->Output = GraphBuilder.CreateUAV(OutputBuffer);
-			*/
-
 			// Create output buffer for number of tris created
 			TArray<int32> vertexTripletIndexValues = { 0 };
 			int32 vertexTripletIndexLength = vertexTripletIndexValues.Num();
@@ -146,12 +138,6 @@ void FMarchingTetrahedraComputeShaderInterface::DispatchRenderThread(FRHICommand
 			PassParameters->zeroNodeOffset = Params.zeroNodeOffset;
 			PassParameters->isovalue = Params.isovalue;
 
-
-			//auto GroupCount = FComputeShaderUtils::GetGroupCount(FIntVector(Params.X, Params.Y, Params.Z), FComputeShaderUtils::kGolden2DGroupSize);
-			//int totalSamples = Params.totalSamples;
-			//int groupSize = NUM_THREADS_MarchingTetrahedraComputeShader_X * NUM_THREADS_MarchingTetrahedraComputeShader_Y * NUM_THREADS_MarchingTetrahedraComputeShader_Z;
-			//FIntVector GroupCount(totalSamples * 4 / groupSize, 1, 1);
-
 			// Calculate the number of worker groups required
 			int groupCountX = FMath::CeilToInt((float)Params.gridPointCount.X / NUM_THREADS_MarchingTetrahedraComputeShader_X);
 			int groupCountY = FMath::CeilToInt((float)Params.gridPointCount.Y / NUM_THREADS_MarchingTetrahedraComputeShader_Y);
@@ -163,9 +149,6 @@ void FMarchingTetrahedraComputeShaderInterface::DispatchRenderThread(FRHICommand
 
 			FRHIGPUBufferReadback* GPUBufferReadback = new FRHIGPUBufferReadback(TEXT("ExecuteMarchingTetrahedraComputeShaderOutput"));
 			AddEnqueueCopyPass(GraphBuilder, GPUBufferReadback, vertexTripletBuffer, 0u);
-
-			//TRefCountPtr<FRDGPooledBuffer> pooled_verticies;
-			//GraphBuilder.QueueBufferExtraction(vertexBuffer, &pooled_verticies, ERHIAccess::CPURead);
 
 			auto RunnerFunc = [GPUBufferReadback, AsyncCallback](auto&& RunnerFunc) -> void {
 				if (GPUBufferReadback->IsReady()) {
