@@ -126,13 +126,20 @@ void FMarchingTetrahedraComputeShaderInterface::DispatchRenderThread(FRHICommand
 		if (bIsShaderValid) {
 			FMarchingTetrahedraComputeShader::FParameters* PassParameters = GraphBuilder.AllocParameters<FMarchingTetrahedraComputeShader::FParameters>();
 
+			// Create input buffer for dataGridValues
+			int32 dataGridValuesLength = Params.dataGridValues.Num();
+			auto dataGridBuffer = CreateStructuredBuffer(GraphBuilder, TEXT("DataGridBuffer"), sizeof(float), dataGridValuesLength, Params.dataGridValues.GetData(), sizeof(float) * dataGridValuesLength, ERDGInitialDataFlags::None);
+			auto dataGridSRV = GraphBuilder.CreateSRV(dataGridBuffer, PF_R32_FLOAT);
+			PassParameters->dataGridValues = dataGridSRV;
+
 			// Create output buffer for number of tris created
 			TArray<int32> vertexTripletIndexValues = { 0 };
 			int32 vertexTripletIndexLength = vertexTripletIndexValues.Num();
-			auto vertexTripletBuffer = CreateStructuredBuffer(GraphBuilder, TEXT("NormalsCS_Verticies"), sizeof(uint32), vertexTripletIndexLength, vertexTripletIndexValues.GetData(), sizeof(uint32) * vertexTripletIndexLength, ERDGInitialDataFlags::None);
+			auto vertexTripletBuffer = CreateStructuredBuffer(GraphBuilder, TEXT("VertexTipletCount"), sizeof(uint32), vertexTripletIndexLength, vertexTripletIndexValues.GetData(), sizeof(uint32) * vertexTripletIndexLength, ERDGInitialDataFlags::None);
 			auto vertexTripletUAV = GraphBuilder.CreateUAV(vertexTripletBuffer, PF_R32_UINT);
 			PassParameters->vertexTripletIndex = vertexTripletUAV;
 
+			// Set the trivial variables
 			PassParameters->gridPointCount = Params.gridPointCount;
 			PassParameters->gridSizePerCube = Params.gridSizePerCube;
 			PassParameters->zeroNodeOffset = Params.zeroNodeOffset;

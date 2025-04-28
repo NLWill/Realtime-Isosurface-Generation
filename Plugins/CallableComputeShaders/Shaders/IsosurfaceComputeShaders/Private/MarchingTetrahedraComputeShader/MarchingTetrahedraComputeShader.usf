@@ -16,17 +16,52 @@ float3 zeroNodeOffset;
 
 float isovalue;
 
+bool IsValidIndex(uint x, uint y, uint z)
+{
+	if (x >= gridPointCount.x)
+		return false;
+	if (y >= gridPointCount.y)
+		return false;
+	if (z >= gridPointCount.z)
+		return false;
+	
+	return true;
+}
+
+bool IsValidIndex(uint3 coord)
+{
+	return IsValidIndex(coord.x, coord.y, coord.z);
+}
+
+// Convert 3D coordinates into the single array index using little-endian notation
+uint GetArrayIndex(uint x, uint y, uint z)
+{
+	if (x >= gridPointCount.x || y >= gridPointCount.y || z >= gridPointCount.z)
+	{
+		return -1;
+	}
+
+	uint xComponent = x;
+	uint yComponent = y * gridPointCount.x;
+	uint zComponent = z * gridPointCount.x * gridPointCount.y;
+	return zComponent + yComponent + xComponent;
+}
+
+uint GetArrayIndex(uint3 coord)
+{
+	return GetArrayIndex(coord.x, coord.y, coord.z);
+}
+
 [numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
 void MarchingTetrahedraComputeShader(
 	uint3 DispatchThreadId : SV_DispatchThreadID,
 	uint GroupIndex : SV_GroupIndex )
 {	
-    if (DispatchThreadId.x >= gridPointCount.x)        
-        return;
-    if (DispatchThreadId.y >= gridPointCount.y)        
-        return;
-    if (DispatchThreadId.z >= gridPointCount.z)       
-        return;
+	if (!IsValidIndex(DispatchThreadId))
+	{
+		return;
+	}
 	
-    InterlockedAdd(vertexTripletIndex[0], 1);
+	int val0 = dataGridValues[GetArrayIndex(DispatchThreadId)];
+	InterlockedAdd(vertexTripletIndex[0], val0);
 }
