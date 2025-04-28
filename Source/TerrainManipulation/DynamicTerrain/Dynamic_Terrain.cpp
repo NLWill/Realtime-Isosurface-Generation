@@ -53,7 +53,8 @@ void ADynamic_Terrain::BeginPlay()
 
 	CalculateMesh();
 
-	if (bEnableCollision) {
+	if (bEnableCollision)
+	{
 		dynamicMesh->SetCollisionProfileName("BlockAll");
 		dynamicMesh->EnableComplexAsSimpleCollision();
 	}
