@@ -25,6 +25,6 @@
 #include "RenderGraphResources.h"
 #include "Runtime/Engine/Classes/Engine/TextureRenderTarget2D.h"
 
-#define NUM_THREADS_MarchingTetrahedraComputeShader_X 1
-#define NUM_THREADS_MarchingTetrahedraComputeShader_Y 1
-#define NUM_THREADS_MarchingTetrahedraComputeShader_Z 1
+#define NUM_THREADS_MarchingTetrahedraComputeShader_X 8
+#define NUM_THREADS_MarchingTetrahedraComputeShader_Y 8
+#define NUM_THREADS_MarchingTetrahedraComputeShader_Z 8

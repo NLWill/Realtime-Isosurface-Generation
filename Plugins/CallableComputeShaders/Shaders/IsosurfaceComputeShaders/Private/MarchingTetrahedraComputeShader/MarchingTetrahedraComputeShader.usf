@@ -1,13 +1,15 @@
 #include "/Engine/Public/Platform.ush"
+#include "MarchingTetrahedraComputeShader.ush"
 
 // Calculate π using the monte carlo method
 // https://en.wikipedia.org/wiki/Monte_Carlo_method
 
 // Output has 1 element: [numInCircle]
-RWBuffer<int> Output;
+RWBuffer<float3> outputVertexTriplets;
+RWBuffer<uint> vertexTripletIndex;
 
 // Seed the random number generator
-float Seed = 0.0f;
+Buffer<float> dataGridValues;
 uint3 gridPointCount;
 float3 gridSizePerCube;
 float3 zeroNodeOffset;
@@ -19,9 +21,12 @@ void MarchingTetrahedraComputeShader(
 	uint3 DispatchThreadId : SV_DispatchThreadID,
 	uint GroupIndex : SV_GroupIndex )
 {	
-    //if (DispatchThreadId.x >= gridPointCount.x)        return;
-    //if (DispatchThreadId.y >= gridPointCount.y)        return;
-    //if (DispatchThreadId.z >= gridPointCount.z)        return;
+    if (DispatchThreadId.x >= gridPointCount.x)        
+        return;
+    if (DispatchThreadId.y >= gridPointCount.y)        
+        return;
+    if (DispatchThreadId.z >= gridPointCount.z)       
+        return;
 	
-    InterlockedAdd(Output[0], 1);
+    InterlockedAdd(vertexTripletIndex[0], 1);
 }

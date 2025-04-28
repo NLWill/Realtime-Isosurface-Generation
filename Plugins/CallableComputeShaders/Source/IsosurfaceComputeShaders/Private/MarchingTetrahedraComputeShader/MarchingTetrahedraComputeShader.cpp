@@ -1,7 +1,7 @@
+#include "IsosurfaceComputeShaders/Public/MarchingTetrahedraComputeShader/MarchingTetrahedraComputeShader.h"
 #include "CanvasTypes.h"
 #include "DynamicMeshBuilder.h"
 #include "GlobalShader.h"
-#include "IsosurfaceComputeShaders/Public/MarchingTetrahedraComputeShader/MarchingTetrahedraComputeShader.h"
 #include "MarchingTetrahedraComputeShader.h"
 #include "MaterialShader.h"
 #include "MeshDrawShaderBindings.h"
@@ -54,12 +54,13 @@ public:
 		// SHADER_PARAMETER_STRUCT_REF(FMyCustomStruct, MyCustomStruct)
 
 
-		SHADER_PARAMETER(float, Seed)
+		SHADER_PARAMETER_RDG_BUFFER_SRV(Buffer<float>, dataGridValues)
 		SHADER_PARAMETER(FIntVector3, gridPointCount)
 		SHADER_PARAMETER(FVector3f, gridSizePerCube)
 		SHADER_PARAMETER(FVector3f, zeroNodeOffset)
 		SHADER_PARAMETER(float, isovalue)
-		SHADER_PARAMETER_RDG_BUFFER_UAV(RWBuffer<int32>, Output)
+		SHADER_PARAMETER_RDG_BUFFER_UAV(RWBuffer<uint32>, vertexTripletIndex)
+		SHADER_PARAMETER_RDG_BUFFER_UAV(RWBuffer<FVector3f>, outputVertexTriplets)
 
 
 	END_SHADER_PARAMETER_STRUCT()
@@ -125,8 +126,6 @@ void FMarchingTetrahedraComputeShaderInterface::DispatchRenderThread(FRHICommand
 		if (bIsShaderValid) {
 			FMarchingTetrahedraComputeShader::FParameters* PassParameters = GraphBuilder.AllocParameters<FMarchingTetrahedraComputeShader::FParameters>();
 
-			PassParameters->Seed = Params.Seed;
-
 			/*
 			FRDGBufferDesc outputBufferDesc = FRDGBufferDesc::CreateStructuredDesc(sizeof(int32), 1);
 			FRDGBufferDesc outputBufferDesc2 = FRDGBufferDesc::CreateBufferDesc(sizeof(int32), 1);
@@ -135,11 +134,12 @@ void FMarchingTetrahedraComputeShaderInterface::DispatchRenderThread(FRHICommand
 			PassParameters->Output = GraphBuilder.CreateUAV(OutputBuffer);
 			*/
 
-			TArray<int32> outValues = { 0 };
-			int32 outputArrayLength = outValues.Num();
-			auto vertexBuffer = CreateStructuredBuffer(GraphBuilder, TEXT("NormalsCS_Verticies"), sizeof(int32), outputArrayLength, outValues.GetData(), sizeof(int32) * outputArrayLength, ERDGInitialDataFlags::None);
-			auto vertexUAV = GraphBuilder.CreateUAV(vertexBuffer, PF_R32_UINT);
-			PassParameters->Output = vertexUAV;
+			// Create output buffer for number of tris created
+			TArray<int32> vertexTripletIndexValues = { 0 };
+			int32 vertexTripletIndexLength = vertexTripletIndexValues.Num();
+			auto vertexTripletBuffer = CreateStructuredBuffer(GraphBuilder, TEXT("NormalsCS_Verticies"), sizeof(uint32), vertexTripletIndexLength, vertexTripletIndexValues.GetData(), sizeof(uint32) * vertexTripletIndexLength, ERDGInitialDataFlags::None);
+			auto vertexTripletUAV = GraphBuilder.CreateUAV(vertexTripletBuffer, PF_R32_UINT);
+			PassParameters->vertexTripletIndex = vertexTripletUAV;
 
 			PassParameters->gridPointCount = Params.gridPointCount;
 			PassParameters->gridSizePerCube = Params.gridSizePerCube;
@@ -162,7 +162,7 @@ void FMarchingTetrahedraComputeShaderInterface::DispatchRenderThread(FRHICommand
 
 
 			FRHIGPUBufferReadback* GPUBufferReadback = new FRHIGPUBufferReadback(TEXT("ExecuteMarchingTetrahedraComputeShaderOutput"));
-			AddEnqueueCopyPass(GraphBuilder, GPUBufferReadback, vertexBuffer, 0u);
+			AddEnqueueCopyPass(GraphBuilder, GPUBufferReadback, vertexTripletBuffer, 0u);
 
 			//TRefCountPtr<FRDGPooledBuffer> pooled_verticies;
 			//GraphBuilder.QueueBufferExtraction(vertexBuffer, &pooled_verticies, ERHIAccess::CPURead);

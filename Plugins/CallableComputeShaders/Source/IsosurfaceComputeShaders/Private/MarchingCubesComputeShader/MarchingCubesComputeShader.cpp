@@ -228,22 +228,27 @@ void FMarchingCubesComputeShaderInterface::DispatchRenderThread(FRHICommandListI
 		const void* rawData = (void*)params.dataGridValues.GetData();
 		int numDataGridEntries = params.dataGridValues.Num();
 		int entrySize = sizeof(float);
-
 		FRDGBufferRef dataGridBuffer = CreateUploadBuffer(GraphBuilder, TEXT("dataGridValues"), entrySize, numDataGridEntries, rawData, entrySize * numDataGridEntries);
-
 		passParameters->dataGridValues = GraphBuilder.CreateSRV(dataGridBuffer, EPixelFormat::PF_R32_FLOAT);
 
 		// Create an output buffer
-		int maxPossibleTris = 5 * 3 * (params.gridPointCount.X - 1) * (params.gridPointCount.Y - 1) * (params.gridPointCount.Z - 1);	
-		// This results in exceeding the max size limit, plus it is incredibly unlikely that all cubes will require all 5 faces
-		FRDGBufferRef outputVertexBuffer = GraphBuilder.CreateBuffer(FRDGBufferDesc::CreateBufferDesc(sizeof(FVector3f), maxPossibleTris), TEXT("outputVertexTriplets"));
+		int maxPossibleTriTriplets = 5 * 3 * (params.gridPointCount.X - 1) * (params.gridPointCount.Y - 1) * (params.gridPointCount.Z - 1);
+		TArray<FVector3f> triList;
+		triList.Init(FVector3f::ZeroVector, maxPossibleTriTriplets);
+		auto vertexListBuffer = CreateStructuredBuffer(GraphBuilder, TEXT("vertexListBuffer"), sizeof(FVector3f), maxPossibleTriTriplets, triList.GetData(), sizeof(FVector3f) * maxPossibleTriTriplets, ERDGInitialDataFlags::None);
+		auto vertexListUAV = GraphBuilder.CreateUAV(vertexListBuffer);
+		passParameters->outputVertexTriplets = vertexListUAV;
 
-		passParameters->outputVertexTriplets = GraphBuilder.CreateUAV(FRDGBufferUAVDesc(outputVertexBuffer));
+		// This results in exceeding the max size limit, plus it is incredibly unlikely that all cubes will require all 5 faces
+		//FRDGBufferRef outputVertexBuffer = GraphBuilder.CreateBuffer(FRDGBufferDesc::CreateBufferDesc(sizeof(FVector3f), maxPossibleTriTriplets), TEXT("outputVertexTriplets"));
+		//passParameters->outputVertexTriplets = GraphBuilder.CreateUAV(FRDGBufferUAVDesc(outputVertexBuffer));
 
 		// Create an output buffer for the number of vertex triplets
-		FRDGBufferRef outputTriangleCountBuffer = GraphBuilder.CreateBuffer(FRDGBufferDesc::CreateBufferDesc(sizeof(uint32), 1), TEXT("OutputBuffer"));
-
-		passParameters->vertexTripletIndex = GraphBuilder.CreateUAV(FRDGBufferUAVDesc(outputTriangleCountBuffer, EPixelFormat::PF_R32_UINT));
+		TArray<int32> triCount = { 0 };
+		int32 triCountBufferLength = 1;
+		auto triCountBuffer = CreateStructuredBuffer(GraphBuilder, TEXT("triCountBuffer"), sizeof(uint32), triCountBufferLength, triCount.GetData(), sizeof(uint32) * triCountBufferLength, ERDGInitialDataFlags::None);
+		auto triCountUAV = GraphBuilder.CreateUAV(triCountBuffer, PF_R32_UINT);
+		passParameters->vertexTripletIndex = triCountUAV;
 
 		// Calculate the number of worker groups required
 		FIntVector groupSize(8, 8, 8);
@@ -259,12 +264,12 @@ void FMarchingCubesComputeShaderInterface::DispatchRenderThread(FRHICommandListI
 		// Retrieve the result from the compute shader
 		// Get the vertex count
 		FRHIGPUBufferReadback* GPUBufferReadbackTriangleCount = new FRHIGPUBufferReadback(TEXT("ExecuteMarchingCubesComputeShaderTriangleCountOutput"));
-		AddEnqueueCopyPass(GraphBuilder, GPUBufferReadbackTriangleCount, outputTriangleCountBuffer, 0u);
+		AddEnqueueCopyPass(GraphBuilder, GPUBufferReadbackTriangleCount, triCountBuffer, 0u);
 		// Get the vertex list
-		//FRHIGPUBufferReadback* GPUBufferReadbackVertexList = new FRHIGPUBufferReadback(TEXT("ExecuteMarchingCubesComputeShaderVertexListOutput"));
-		//AddEnqueueCopyPass(GraphBuilder, GPUBufferReadbackVertexList, outputVertexBuffer, 0u);
+		FRHIGPUBufferReadback* GPUBufferReadbackVertexList = new FRHIGPUBufferReadback(TEXT("ExecuteMarchingCubesComputeShaderVertexListOutput"));
+		AddEnqueueCopyPass(GraphBuilder, GPUBufferReadbackVertexList, vertexListBuffer, 0u);
 
-		auto RunnerFunc = [GPUBufferReadbackTriangleCount, AsyncCallback](auto&& RunnerFunc) -> void
+		auto RunnerFunc = [GPUBufferReadbackTriangleCount, GPUBufferReadbackVertexList, AsyncCallback](auto&& RunnerFunc) -> void
 			{
 				if (GPUBufferReadbackTriangleCount->IsReady())
 				{
