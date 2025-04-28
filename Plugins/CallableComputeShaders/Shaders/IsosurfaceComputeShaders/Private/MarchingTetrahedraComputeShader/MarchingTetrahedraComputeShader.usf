@@ -15,6 +15,12 @@ float3 zeroNodeOffset;
 
 float isovalue;
 
+struct FTetrahedra
+{
+    uint4 cornerIndices;
+    float4 values;
+};
+
 bool IsValidIndex(uint x, uint y, uint z)
 {
 	if (x >= gridPointCount.x)
