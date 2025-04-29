@@ -102,10 +102,32 @@ void ADynamic_Terrain::CalculateMesh()
 		marchingTetrahedraGenerator->dataGrid = dataGrid;
 		marchingTetrahedraGenerator->isovalue = isovalue;
 		marchingTetrahedraGenerator->gridCellDimensions = (FVector3d)gridCellDimensions;
-		marchingTetrahedraGenerator->bGPUCompute = bUseGPU;
+		if (bUseGPU) 
+		{
+			marchingTetrahedraGenerator->GenerateOnGPU([dynamicMesh = dynamicMesh](UE::Geometry::FDynamicMesh3 generatedMesh) {
+				//UpdateDynamicMesh(generatedMesh);
+				if (dynamicMesh == nullptr)
+				{
+					UE_LOG(LogTemp, Display, TEXT("DynamicMesh is nullptr"))
+				}
 
-		mesh = marchingTetrahedraGenerator->Generate();
-	}	
+				if (dynamicMesh)
+				{
+					dynamicMesh->SetMesh(MoveTemp(generatedMesh));
+					dynamicMesh->NotifyMeshUpdated();
+				}
+				else {
+					UE_LOG(LogTemp, Warning, TEXT("No Mesh Component"));
+				}
+				});
+		}
+		else
+		{
+			mesh = marchingTetrahedraGenerator->GenerateOnCPU();
+		}
+	}
+
+	UpdateDynamicMesh(mesh);
 
 	//UE_LOG(LogTemp, Display, TEXT("Number of tris in mesh: %d"), mesh.TriangleCount())
 	//FBasicComputeShaderDispatchParams computeShaderParams(1, 1, 1);
@@ -120,9 +142,6 @@ void ADynamic_Terrain::CalculateMesh()
 	//		UE_LOG(LogTemp, Display, TEXT("C++ compute shader, %d * %d = %d"), inp1, inp2, result)
 	//		// End compute shader callback
 	//	});
-
-
-	UpdateDynamicMesh(mesh);
 }
 
 FVector3d ADynamic_Terrain::GetLocalPositionOfGridPoint(int x, int y, int z) const

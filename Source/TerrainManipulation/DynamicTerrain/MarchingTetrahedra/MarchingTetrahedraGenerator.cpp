@@ -35,56 +35,49 @@ MarchingTetrahedraGenerator::MarchingTetrahedraGenerator(const MarchingTetrahedr
 	dataGrid = TArray3D<float>(other.dataGrid);
 }
 
-FDynamicMesh3 MarchingTetrahedraGenerator::Generate()
+//FDynamicMesh3 MarchingTetrahedraGenerator::Generate()
+//{
+//#if DEBUG_MARCHING_TETRA
+//	// Measure the time taken to perform the algorithm
+//	auto start = std::chrono::high_resolution_clock::now();
+//#endif
+//
+//	generatedMesh.Clear();
+//
+//	// Perform the algorithm to determine the number of triangles
+//	if (bGPUCompute)
+//	{
+//		GenerateOnGPU();
+//	}
+//	else
+//	{
+//		GenerateOnCPU();
+//	}
+//
+//#if DEBUG_MARCHING_TETRA
+//	auto finish = std::chrono::high_resolution_clock::now();
+//
+//	auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(finish - start);
+//	if (microseconds.count() > 1000 * 1000) {
+//		double floatingPointMicroseconds = (double)microseconds.count();
+//		UE_LOG(LogTemp, Display, TEXT("Marching tetrahedra recalculation took %fs"), floatingPointMicroseconds / (1000 * 1000));
+//	}
+//	else if (microseconds.count() > 1000) {
+//		double floatingPointMicroseconds = (double)microseconds.count();
+//		UE_LOG(LogTemp, Display, TEXT("Marching tetrahedra recalculation took %fms"), floatingPointMicroseconds / 1000);
+//	}
+//	else {
+//		UE_LOG(LogTemp, Display, TEXT("Marching tetrahedra recalculation took %dµs"), microseconds.count());
+//	}
+//
+//#endif
+//
+//	// Return the FDynamicMesh3
+//	return generatedMesh;
+//}
+
+void MarchingTetrahedraGenerator::GenerateOnGPU(TFunction<void(UE::Geometry::FDynamicMesh3 generatedMesh)> AsyncCallback)
 {
-#if DEBUG_MARCHING_TETRA
-	// Measure the time taken to perform the algorithm
-	auto start = std::chrono::high_resolution_clock::now();
-#endif
-
-	generatedMesh.Clear();
-
-	// Perform the algorithm to determine the number of triangles
-	if (bGPUCompute)
-	{
-		GenerateOnGPU();
-	}
-	else
-	{
-		GenerateOnCPU();
-	}
-
-#if DEBUG_MARCHING_TETRA
-	auto finish = std::chrono::high_resolution_clock::now();
-
-	auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(finish - start);
-	if (microseconds.count() > 1000 * 1000) {
-		double floatingPointMicroseconds = (double)microseconds.count();
-		UE_LOG(LogTemp, Display, TEXT("Marching tetrahedra recalculation took %fs"), floatingPointMicroseconds / (1000 * 1000));
-	}
-	else if (microseconds.count() > 1000) {
-		double floatingPointMicroseconds = (double)microseconds.count();
-		UE_LOG(LogTemp, Display, TEXT("Marching tetrahedra recalculation took %fms"), floatingPointMicroseconds / 1000);
-	}
-	else {
-		UE_LOG(LogTemp, Display, TEXT("Marching tetrahedra recalculation took %dµs"), microseconds.count());
-	}
-
-#endif
-
-	// Return the FDynamicMesh3
-	return generatedMesh;
-}
-
-void MarchingTetrahedraGenerator::GenerateOnGPU()
-{
-	// vector of positions for each GPU worker group
-	std::vector<std::vector<FVector3d>> verts;
-
-	// vector of tri ids, consistent with the equivalent vert group
-	// tri ids will need to be scaled by the length of previous vert groups to ensure consistency
-	std::vector<std::vector<FIndex3i>> tris;
-
 	// Run the algorithm
 	FIntVector3 gridPointCount(dataGrid.GetSize(0), dataGrid.GetSize(1), dataGrid.GetSize(2));
 
@@ -95,34 +88,14 @@ void MarchingTetrahedraGenerator::GenerateOnGPU()
 	marchTet.Completed.Add(resultFunctionDelegate);*/
 
 	FMarchingTetrahedraComputeShaderDispatchParams params(dataGrid.GetRawDataStruct(), gridPointCount, (FVector3f)gridCellDimensions, FVector3f::ZeroVector, isovalue);
-	FMarchingTetrahedraComputeShaderInterface::Dispatch(params, [this](TArray<FVector3f> outputVertexTriplets) {
-		UE_LOG(LogTemp, Display, TEXT("Made it to outermost lambda"))
+	FMarchingTetrahedraComputeShaderInterface::Dispatch(params, [this, &AsyncCallback](TArray<FVector3f> outputVertexTriplets) {
+			UE_LOG(LogTemp, Display, TEXT("Made it to outermost lambda"))
 			CreateMeshFromVertexTriplets(outputVertexTriplets);
+			//AsyncCallback(generatedMesh);
 		});
-
-
-	// Populate the vertices and triangles arrays
-	int numVertices = 0;
-	int numTriangles = 0;
-	for (size_t i = 0; i < verts.size(); i++)
-	{
-		for (size_t j = 0; j < verts[i].size(); j++)
-		{
-			int vertexID = generatedMesh.AppendVertex(verts[i][j]);
-		}
-		for (size_t j = 0; j < tris[i].size(); j++)
-		{
-			// Offset the triangle indices by the number of vertices from previous GPU worker groups
-			// to ensure the tris still point to the correct vertices
-			generatedMesh.AppendTriangle(tris[i][j].A + numVertices, tris[i][j].B + numVertices, tris[i][j].C + numVertices);
-		}
-
-		numVertices += verts[i].size();
-		numTriangles += tris[i].size();
-	}
 }
 
-void MarchingTetrahedraGenerator::GenerateOnCPU()
+FDynamicMesh3 MarchingTetrahedraGenerator::GenerateOnCPU()
 {
 	std::vector<FVector> verts;
 	std::vector<FIndex3i> tris;
@@ -145,6 +118,8 @@ void MarchingTetrahedraGenerator::GenerateOnCPU()
 			}
 		}
 	}
+
+	return generatedMesh;
 }
 
 void MarchingTetrahedraGenerator::InitialiseGridCell(FGridCell& gridCell, const UE::Geometry::FVector3i& gridIndex)
@@ -309,14 +284,14 @@ void MarchingTetrahedraGenerator::GenerateTrianglesFromTetrahedron(const FTetrah
 
 void MarchingTetrahedraGenerator::CreateMeshFromVertexTriplets(const TArray<FVector3f>& vertexTripletList)
 {
-	UE_LOG(LogTemp, Display, TEXT("Finished the Marching Tetrahedra GPU and creating the mesh"))
+	UE_LOG(LogTemp, Display, TEXT("Finished the Marching Tetrahedra GPU and creating the mesh. List length is %d"), vertexTripletList.Num())
 
-		/*for (int i = 0; i < vertexTripletList.Num(); i += 3)
-		{
-			generatedMesh.AppendVertex((FVector3d)vertexTripletList[i]);
-			generatedMesh.AppendVertex((FVector3d)vertexTripletList[i + 1]);
-			generatedMesh.AppendVertex((FVector3d)vertexTripletList[i + 2]);
+	for (int i = 0; i < vertexTripletList.Num(); i += 3)
+	{
+		generatedMesh.AppendVertex((FVector3d)vertexTripletList[i]);
+		generatedMesh.AppendVertex((FVector3d)vertexTripletList[i + 1]);
+		generatedMesh.AppendVertex((FVector3d)vertexTripletList[i + 2]);
 
-			generatedMesh.AppendTriangle(i, i + 1, i + 2);
-		}*/
+		generatedMesh.AppendTriangle(i, i + 1, i + 2);
+	}
 }

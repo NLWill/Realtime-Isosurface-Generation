@@ -27,29 +27,22 @@ public:
 	// The length of the grid cell along each local axis
 	FVector3d gridCellDimensions;
 
-	// Should this generator run in parallel on the GPU?
-	bool bGPUCompute = false;
-
 public:
 	// The mesh that shall be returned after the algorithm is complete
 	UE::Geometry::FDynamicMesh3 generatedMesh = UE::Geometry::FDynamicMesh3::FDynamicMesh3();
 
 public:
-	// Run the Marching Tetrahedra algorithm to create a new FDynamicMesh3
-	virtual UE::Geometry::FDynamicMesh3 Generate();
-
-protected:
 	/// <summary>
 	/// Generate the mesh using compute shaders on the GPU
 	/// </summary>
-	void GenerateOnGPU();
-	FScriptDelegate resultFunctionDelegate;
+	void GenerateOnGPU(TFunction<void(UE::Geometry::FDynamicMesh3 generatedMesh)> AsyncCallback);
 
 	/// <summary>
 	/// Generate the mesh with linear computation on the CPU
 	/// </summary>
-	void GenerateOnCPU();
+	UE::Geometry::FDynamicMesh3 GenerateOnCPU();
 
+protected:
 	// Pass GridCells around rather than the whole grid to simplify code
 	struct FGridCell
 	{

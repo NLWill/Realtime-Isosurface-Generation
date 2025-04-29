@@ -34,10 +34,12 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float isovalue;
 
+public:
 	// The procedural mesh component containing the mesh data that will be rendered in-game
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
 	UDynamicMeshComponent* dynamicMesh;
 
+protected:
 	UPROPERTY(EditAnywhere)
 	bool bEnableCollision = true;
 
@@ -98,6 +100,12 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void AddToDataGridInRadius(FVector centre, float radius, float valueToAdd);
 
+	/// <summary>
+	/// Update the dynamic mesh component with a new FDynamicMesh3 mesh
+	/// </summary>
+	/// <param name="mesh">The new mesh to be rendered</param>
+	void UpdateDynamicMesh(UE::Geometry::FDynamicMesh3 mesh);
+
 private:
 
 	/// <summary>
@@ -106,7 +114,6 @@ private:
 	void InitialiseDataGrid();
 
 	UE::Geometry::FDynamicMesh3 RegenerateByHand();
-	void UpdateDynamicMesh(UE::Geometry::FDynamicMesh3 mesh);
 
 	TArray3D<float> dataGrid;
 
