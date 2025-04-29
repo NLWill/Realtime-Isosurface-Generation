@@ -181,10 +181,10 @@ void FMarchingTetrahedraComputeShaderInterface::DispatchRenderThread(FRHICommand
 					FVector3f* outputVertexList = (FVector3f*)GPUBufferReadbackVertexList->Lock(OutVal * sizeof(FVector3f));
 					TArray<FVector3f> outputVertexArray(outputVertexList, OutVal);
 					GPUBufferReadbackVertexList->Unlock();
-					for (FVector3f& item : outputVertexArray)
+					/*for (FVector3f& item : outputVertexArray)
 					{
 						UE_LOG(LogTemp, Display, TEXT("%s"), *item.ToString())
-					}
+					}*/
 
 					AsyncTask(ENamedThreads::GameThread, [AsyncCallback, outputVertexArray]()
 						{
