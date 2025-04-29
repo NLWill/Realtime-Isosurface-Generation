@@ -36,6 +36,8 @@ ADynamic_Terrain::ADynamic_Terrain()
 	topRightAnchor = FVector3f(200, 200, 200);
 
 	isovalue = 0;
+	bUseGPU = false;
+	bUseMarchingCubes = false;
 }
 
 // Called when the game starts or when spawned
@@ -79,9 +81,10 @@ void ADynamic_Terrain::CalculateMesh()
 	if (bUseMarchingCubes) 
 	{
 		// Marching Cubes Method
-		std::unique_ptr<ISurfaceGenerationAlgorithm> marchingCubes = std::make_unique<MarchingCubesGenerator>();
-		marchingCubes->bGPUCompute = bUseGPU;
-		TArray<FVector3f> vertices = marchingCubes->RunAlgorithm(dataGrid, gridCellDimensions, bottomLeftAnchor, isovalue);
+		delete marchingCubesGenerator;
+		marchingCubesGenerator = new MarchingCubesGenerator();
+		marchingCubesGenerator->bGPUCompute = bUseGPU;
+		TArray<FVector3f> vertices = marchingCubesGenerator->RunAlgorithm(dataGrid, gridCellDimensions, bottomLeftAnchor, isovalue);
 
 		for (size_t i = 0; i < vertices.Num(); i+=3)
 		{
@@ -94,29 +97,29 @@ void ADynamic_Terrain::CalculateMesh()
 	else
 	{
 		//MarchingTetrahedraGenerator* marchingTetrahedra = NewObject<MarchingTetrahedraGenerator>();
-		MarchingTetrahedraGenerator* marchingTetrahedra = new MarchingTetrahedraGenerator();
-		marchingTetrahedra->dataGrid = dataGrid;
-		marchingTetrahedra->isovalue = isovalue;
-		marchingTetrahedra->gridCellDimensions = (FVector3d)gridCellDimensions;
-		marchingTetrahedra->bGPUCompute = bUseGPU;
+		delete marchingTetrahedraGenerator;
+		marchingTetrahedraGenerator = new MarchingTetrahedraGenerator();
+		marchingTetrahedraGenerator->dataGrid = dataGrid;
+		marchingTetrahedraGenerator->isovalue = isovalue;
+		marchingTetrahedraGenerator->gridCellDimensions = (FVector3d)gridCellDimensions;
+		marchingTetrahedraGenerator->bGPUCompute = bUseGPU;
 
-		mesh = marchingTetrahedra->Generate();
+		mesh = marchingTetrahedraGenerator->Generate();
 	}	
 
 	//UE_LOG(LogTemp, Display, TEXT("Number of tris in mesh: %d"), mesh.TriangleCount())
-	FBasicComputeShaderDispatchParams computeShaderParams(1, 1, 1);
-	int inp1 = 31, inp2 = 11;
-	computeShaderParams.Input[0] = inp1;
-	computeShaderParams.Input[1] = inp2;
+	//FBasicComputeShaderDispatchParams computeShaderParams(1, 1, 1);
+	//int inp1 = 31, inp2 = 11;
+	//computeShaderParams.Input[0] = inp1;
+	//computeShaderParams.Input[1] = inp2;
 
-	TFunction<void (int)> asyncCallback = [inp1, inp2](int result) {	UE_LOG(LogTemp, Display, TEXT("C++ compute shader, %d * %d = %d"), inp1, inp2, result)};
-	FBasicComputeShaderInterface::Dispatch(computeShaderParams, 
-		[inp1, inp2](int result) 
-		{	
-			// Begin compute shader callback
-			UE_LOG(LogTemp, Display, TEXT("C++ compute shader, %d * %d = %d"), inp1, inp2, result)
-			// End compute shader callback
-		});
+	//FBasicComputeShaderInterface::Dispatch(computeShaderParams, 
+	//	[inp1, inp2](int result) 
+	//	{	
+	//		// Begin compute shader callback
+	//		UE_LOG(LogTemp, Display, TEXT("C++ compute shader, %d * %d = %d"), inp1, inp2, result)
+	//		// End compute shader callback
+	//	});
 
 
 	UpdateDynamicMesh(mesh);

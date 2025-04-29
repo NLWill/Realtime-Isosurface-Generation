@@ -5,6 +5,8 @@
 #include "ProceduralMeshComponent.h"
 #include "Components/DynamicMeshComponent.h"
 #include "TerrainManipulation/DataStructs/TArray3D.h"
+#include "MarchingCubes/MarchingCubesGenerator.h"
+#include "MarchingTetrahedra/MarchingTetrahedraGenerator.h"
 #include "Dynamic_Terrain.generated.h"
 
 UCLASS()
@@ -107,4 +109,8 @@ private:
 	void UpdateDynamicMesh(UE::Geometry::FDynamicMesh3 mesh);
 
 	TArray3D<float> dataGrid;
+
+	// Retain the objects to ensure object lifetime is long enough for the async compute shaders
+	MarchingCubesGenerator* marchingCubesGenerator;
+	MarchingTetrahedraGenerator* marchingTetrahedraGenerator;
 };
