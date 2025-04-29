@@ -152,7 +152,7 @@ void GenerateTrianglesFromTetrahedron(FTetrahedron tetra, int tetraIndex, float3
 
 	// Check at least one triangle is required
 	// It should be required, due to tetraIndex checks in the TriangulateTetrahedron function
-    if (tetrahedronTriTable[tetraIndex].y != -1)
+    if (tetrahedronTriTable[tetraIndex].z != -1)
     {
         int tripletIndex;
         InterlockedAdd(vertexTripletIndex[0], 3, tripletIndex);
@@ -166,7 +166,7 @@ void GenerateTrianglesFromTetrahedron(FTetrahedron tetra, int tetraIndex, float3
     }
 
 	// Check whether a second triangle is required
-    if (tetrahedronTriTable[tetraIndex].z != -1)
+    if (tetrahedronTriTable[tetraIndex].w != -1)
     {		
         int tripletIndex;
         InterlockedAdd(vertexTripletIndex[0], 3, tripletIndex);
