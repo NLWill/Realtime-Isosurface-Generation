@@ -45,14 +45,14 @@ FDynamicMesh3 MarchingTetrahedraGenerator::Generate()
 	generatedMesh.Clear();
 
 	// Perform the algorithm to determine the number of triangles
-	if (bGPUCompute) 
+	if (bGPUCompute)
 	{
 		GenerateOnGPU();
 	}
-	else 
+	else
 	{
 		GenerateOnCPU();
-	}	
+	}
 
 #if DEBUG_MARCHING_TETRA
 	auto finish = std::chrono::high_resolution_clock::now();
@@ -86,21 +86,18 @@ void MarchingTetrahedraGenerator::GenerateOnGPU()
 	std::vector<std::vector<FIndex3i>> tris;
 
 	// Run the algorithm
-	int totalSamples = 200000;
-	FDemoPiComputeShaderDispatchParams piParams(1, 1, 1);
-	piParams.Seed = 0;
-	FDemoPiComputeShaderInterface::Dispatch(piParams, [](int totalInCircle) {UE_LOG(LogTemp, Display, TEXT("A single call of piParams produced %d in circle"), totalInCircle)});
-
-
 	FIntVector3 gridPointCount(dataGrid.GetSize(0), dataGrid.GetSize(1), dataGrid.GetSize(2));
+
+	/*UMarchingTetrahedraComputeShaderLibrary_AsyncExecution marchTet;
+	marchTet.Params = FMarchingTetrahedraComputeShaderDispatchParams(dataGrid.GetRawDataStruct(), gridPointCount, (FVector3f)gridCellDimensions, FVector3f::ZeroVector, isovalue);
+	TSharedRef<MarchingTetrahedraGenerator> marchingTetrahedraGenerator(this);
+	resultFunctionDelegate.BindUFunction(this, FName("CreateMeshFromVertexTriplets"));
+	marchTet.Completed.Add(resultFunctionDelegate);*/
+
 	FMarchingTetrahedraComputeShaderDispatchParams params(dataGrid.GetRawDataStruct(), gridPointCount, (FVector3f)gridCellDimensions, FVector3f::ZeroVector, isovalue);
-	params.Seed = 1;
-	params.totalSamples = totalSamples;
-	FMarchingTetrahedraComputeShaderInterface::Dispatch(params, [this, totalSamples](int totalInCircle)
-		{
-			TArray<FVector3f> trialVertexTriplet = { FVector3f(0,0,0), FVector3f(0,100,0) , FVector3f(100,100,0) };
-			UE_LOG(LogTemp, Display, TEXT("Completed compute shader. Pi result = %d/%d, which is equivalent to %f"), totalInCircle, totalSamples, (double)totalInCircle / (double)totalSamples)
-			//CreateMeshFromVertexTriplets(trialVertexTriplet);
+	FMarchingTetrahedraComputeShaderInterface::Dispatch(params, [this](TArray<FVector3f> outputVertexTriplets) {
+		UE_LOG(LogTemp, Display, TEXT("Made it to outermost lambda"))
+			CreateMeshFromVertexTriplets(outputVertexTriplets);
 		});
 
 
@@ -131,8 +128,8 @@ void MarchingTetrahedraGenerator::GenerateOnCPU()
 	std::vector<FIndex3i> tris;
 
 	FGridCell gridCell;
-	FVector3i gridIndex = FVector3i(0,0,0);
-	
+	FVector3i gridIndex = FVector3i(0, 0, 0);
+
 	// Iterate over first x, then y, then z
 	for (size_t k = 0; k < dataGrid.GetSize(2) - 1; k++)
 	{
@@ -275,16 +272,16 @@ void MarchingTetrahedraGenerator::GenerateTrianglesFromTetrahedron(const FTetrah
 		cubeVertices.first = tetra.cornerIndices[tetraVertices.first];
 		cubeVertices.second = tetra.cornerIndices[tetraVertices.second];
 		int edgeID = cubeVertexPairToEdge[cubeVertices.first][cubeVertices.second];
-		if (edgeID != -1) 
+		if (edgeID != -1)
 		{
 			interpolatedEdgesInTetrahedronSpace.Add(interpolatedEdgesInCube[edgeID]);
 		}
-		else 
+		else
 		{
 			// Edge ID should never return -1 as it is a sign of a disconnect between data table definitions
 			UE_LOG(LogTemp, Fatal, TEXT("Vertex pair %d and %d do not form a valid edge."), cubeVertices.first, cubeVertices.second)
 		}
-		
+
 	}
 
 	// Check at least one triangle is required
@@ -301,7 +298,7 @@ void MarchingTetrahedraGenerator::GenerateTrianglesFromTetrahedron(const FTetrah
 	else return;
 
 	// Check whether a second triangle is required
-	if (tetrahedronTriTable[tetraIndex][3] != -1) 
+	if (tetrahedronTriTable[tetraIndex][3] != -1)
 	{
 		// Append the final required vertex from the triangle strip
 		interpolatedVertexIDs[3] = generatedMesh.AppendVertex(interpolatedEdgesInTetrahedronSpace[tetrahedronTriTable[tetraIndex][3]]);
@@ -314,12 +311,12 @@ void MarchingTetrahedraGenerator::CreateMeshFromVertexTriplets(const TArray<FVec
 {
 	UE_LOG(LogTemp, Display, TEXT("Finished the Marching Tetrahedra GPU and creating the mesh"))
 
-	for (int i = 0; i < vertexTripletList.Num(); i += 3) 
-	{
-		generatedMesh.AppendVertex((FVector3d)vertexTripletList[i]);
-		generatedMesh.AppendVertex((FVector3d)vertexTripletList[i + 1]);
-		generatedMesh.AppendVertex((FVector3d)vertexTripletList[i + 2]);
+		/*for (int i = 0; i < vertexTripletList.Num(); i += 3)
+		{
+			generatedMesh.AppendVertex((FVector3d)vertexTripletList[i]);
+			generatedMesh.AppendVertex((FVector3d)vertexTripletList[i + 1]);
+			generatedMesh.AppendVertex((FVector3d)vertexTripletList[i + 2]);
 
-		generatedMesh.AppendTriangle(i, i + 1, i + 2);
-	}
+			generatedMesh.AppendTriangle(i, i + 1, i + 2);
+		}*/
 }

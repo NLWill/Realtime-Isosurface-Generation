@@ -93,12 +93,14 @@ void ADynamic_Terrain::CalculateMesh()
 	}
 	else
 	{
-		MarchingTetrahedraGenerator marchingTetrahedra = MarchingTetrahedraGenerator(dataGrid);
-		marchingTetrahedra.isovalue = isovalue;
-		marchingTetrahedra.gridCellDimensions = (FVector3d)gridCellDimensions;
-		marchingTetrahedra.bGPUCompute = bUseGPU;
+		//MarchingTetrahedraGenerator* marchingTetrahedra = NewObject<MarchingTetrahedraGenerator>();
+		MarchingTetrahedraGenerator* marchingTetrahedra = new MarchingTetrahedraGenerator();
+		marchingTetrahedra->dataGrid = dataGrid;
+		marchingTetrahedra->isovalue = isovalue;
+		marchingTetrahedra->gridCellDimensions = (FVector3d)gridCellDimensions;
+		marchingTetrahedra->bGPUCompute = bUseGPU;
 
-		mesh = marchingTetrahedra.Generate();
+		mesh = marchingTetrahedra->Generate();
 	}	
 
 	//UE_LOG(LogTemp, Display, TEXT("Number of tris in mesh: %d"), mesh.TriangleCount())

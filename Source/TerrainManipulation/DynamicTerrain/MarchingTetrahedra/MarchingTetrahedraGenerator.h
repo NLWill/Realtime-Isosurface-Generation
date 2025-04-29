@@ -30,7 +30,7 @@ public:
 	// Should this generator run in parallel on the GPU?
 	bool bGPUCompute = false;
 
-protected:
+public:
 	// The mesh that shall be returned after the algorithm is complete
 	UE::Geometry::FDynamicMesh3 generatedMesh = UE::Geometry::FDynamicMesh3::FDynamicMesh3();
 
@@ -43,6 +43,7 @@ protected:
 	/// Generate the mesh using compute shaders on the GPU
 	/// </summary>
 	void GenerateOnGPU();
+	FScriptDelegate resultFunctionDelegate;
 
 	/// <summary>
 	/// Generate the mesh with linear computation on the CPU
@@ -134,6 +135,7 @@ protected:
 	/// <param name="interpolatedEdgesInCube">The interpolated edges of the cube</param>
 	void GenerateTrianglesFromTetrahedron(const FTetrahedron& tetra, int tetraIndex, const TArray<FVector3d>& interpolatedEdgesInCube);
 
+	UFUNCTION()
 	void CreateMeshFromVertexTriplets(const TArray<FVector3f>& vertexTripletList);
 
 	/// <summary>

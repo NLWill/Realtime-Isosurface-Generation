@@ -1,8 +1,8 @@
-#include "IsosurfaceComputeShaders/Public/MarchingTetrahedraComputeShader/MarchingTetrahedraComputeShader.h"
+#include "MarchingTetrahedraComputeShader.h"
 #include "CanvasTypes.h"
 #include "DynamicMeshBuilder.h"
 #include "GlobalShader.h"
-#include "MarchingTetrahedraComputeShader.h"
+#include "IsosurfaceComputeShaders/Public/MarchingTetrahedraComputeShader/MarchingTetrahedraComputeShader.h"
 #include "MaterialShader.h"
 #include "MeshDrawShaderBindings.h"
 #include "MeshPassProcessor.inl"
@@ -104,7 +104,7 @@ private:
 //                            ShaderType                            ShaderPath                     Shader function name    Type
 IMPLEMENT_GLOBAL_SHADER(FMarchingTetrahedraComputeShader, "/IsosurfaceComputeShadersShaders/MarchingTetrahedraComputeShader/MarchingTetrahedraComputeShader.usf", "MarchingTetrahedraComputeShader", SF_Compute);
 
-void FMarchingTetrahedraComputeShaderInterface::DispatchRenderThread(FRHICommandListImmediate& RHICmdList, FMarchingTetrahedraComputeShaderDispatchParams Params, TFunction<void(int OutputVal)> AsyncCallback) {
+void FMarchingTetrahedraComputeShaderInterface::DispatchRenderThread(FRHICommandListImmediate& RHICmdList, FMarchingTetrahedraComputeShaderDispatchParams Params, TFunction<void(TArray<FVector3f> outputVertexTriplets)> AsyncCallback) {
 	FRDGBuilder GraphBuilder(RHICmdList);
 
 	{
@@ -123,7 +123,8 @@ void FMarchingTetrahedraComputeShaderInterface::DispatchRenderThread(FRHICommand
 
 		bool bIsShaderValid = ComputeShader.IsValid();
 
-		if (bIsShaderValid) {
+		if (bIsShaderValid)
+		{
 			FMarchingTetrahedraComputeShader::FParameters* PassParameters = GraphBuilder.AllocParameters<FMarchingTetrahedraComputeShader::FParameters>();
 
 			// Create input buffer for dataGridValues
@@ -185,26 +186,30 @@ void FMarchingTetrahedraComputeShaderInterface::DispatchRenderThread(FRHICommand
 						UE_LOG(LogTemp, Display, TEXT("%s"), *item.ToString())
 					}
 
-					AsyncTask(ENamedThreads::GameThread, [AsyncCallback, OutVal]() {
-						AsyncCallback(OutVal);
+					AsyncTask(ENamedThreads::GameThread, [AsyncCallback, outputVertexArray]()
+						{
+							AsyncCallback(outputVertexArray);
 						});
 
 					delete GPUBufferReadbackTripletCount;
 					delete GPUBufferReadbackVertexList;
 				}
 				else {
-					AsyncTask(ENamedThreads::ActualRenderingThread, [RunnerFunc]() {
-						RunnerFunc(RunnerFunc);
+					AsyncTask(ENamedThreads::ActualRenderingThread, [RunnerFunc]()
+						{
+							RunnerFunc(RunnerFunc);
 						});
 				}
 				};
 
-			AsyncTask(ENamedThreads::ActualRenderingThread, [RunnerFunc]() {
-				RunnerFunc(RunnerFunc);
+			AsyncTask(ENamedThreads::ActualRenderingThread, [RunnerFunc]()
+				{
+					RunnerFunc(RunnerFunc);
 				});
 
 		}
-		else {
+		else
+		{
 #if WITH_EDITOR
 			GEngine->AddOnScreenDebugMessage((uint64)42145125184, 6.f, FColor::Red, FString(TEXT("The compute shader has a problem.")));
 #endif
