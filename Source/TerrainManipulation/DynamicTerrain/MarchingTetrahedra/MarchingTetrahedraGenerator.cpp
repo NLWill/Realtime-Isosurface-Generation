@@ -76,7 +76,7 @@ MarchingTetrahedraGenerator::MarchingTetrahedraGenerator(const MarchingTetrahedr
 //	return generatedMesh;
 //}
 
-void MarchingTetrahedraGenerator::GenerateOnGPU(TFunction<void(UE::Geometry::FDynamicMesh3 generatedMesh)> AsyncCallback)
+void MarchingTetrahedraGenerator::GenerateOnGPU(UDynamicMeshComponent* dynamicMesh)
 {
 	// Run the algorithm
 	FIntVector3 gridPointCount(dataGrid.GetSize(0), dataGrid.GetSize(1), dataGrid.GetSize(2));
@@ -88,10 +88,11 @@ void MarchingTetrahedraGenerator::GenerateOnGPU(TFunction<void(UE::Geometry::FDy
 	marchTet.Completed.Add(resultFunctionDelegate);*/
 
 	FMarchingTetrahedraComputeShaderDispatchParams params(dataGrid.GetRawDataStruct(), gridPointCount, (FVector3f)gridCellDimensions, FVector3f::ZeroVector, isovalue);
-	FMarchingTetrahedraComputeShaderInterface::Dispatch(params, [this, &AsyncCallback](TArray<FVector3f> outputVertexTriplets) {
+	FMarchingTetrahedraComputeShaderInterface::Dispatch(params, [this, dynamicMesh](TArray<FVector3f> outputVertexTriplets) {
 			UE_LOG(LogTemp, Display, TEXT("Made it to outermost lambda"))
 			CreateMeshFromVertexTriplets(outputVertexTriplets);
-			//AsyncCallback(generatedMesh);
+			dynamicMesh->SetMesh(MoveTemp(generatedMesh));
+			dynamicMesh->NotifyMeshUpdated();
 		});
 }
 

@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "DynamicMesh/DynamicMesh3.h"
+#include "Components/DynamicMeshComponent.h"
 #include "TerrainManipulation/DataStructs/TArray3D.h"
 
 /**
@@ -35,7 +36,7 @@ public:
 	/// <summary>
 	/// Generate the mesh using compute shaders on the GPU
 	/// </summary>
-	void GenerateOnGPU(TFunction<void(UE::Geometry::FDynamicMesh3 generatedMesh)> AsyncCallback);
+	void GenerateOnGPU(UDynamicMeshComponent* dynamicMesh);
 
 	/// <summary>
 	/// Generate the mesh with linear computation on the CPU

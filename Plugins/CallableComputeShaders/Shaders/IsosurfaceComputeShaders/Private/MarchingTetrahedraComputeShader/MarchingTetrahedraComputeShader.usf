@@ -156,9 +156,9 @@ void GenerateTrianglesFromTetrahedron(FTetrahedron tetra, int tetraIndex, float3
     {
         int tripletIndex;
         InterlockedAdd(vertexTripletIndex[0], 3, tripletIndex);
-        SetOutputVertex(tripletIndex, interpolatedEdgesInTetrahedronSpace[tetrahedronTriTable[tetraIndex].w]);
-        SetOutputVertex(tripletIndex + 1, interpolatedEdgesInTetrahedronSpace[tetrahedronTriTable[tetraIndex].x]);
-        SetOutputVertex(tripletIndex + 2, interpolatedEdgesInTetrahedronSpace[tetrahedronTriTable[tetraIndex].y]);
+        SetOutputVertex(tripletIndex, interpolatedEdgesInTetrahedronSpace[tetrahedronTriTable[tetraIndex].x]);
+        SetOutputVertex(tripletIndex + 1, interpolatedEdgesInTetrahedronSpace[tetrahedronTriTable[tetraIndex].y]);
+        SetOutputVertex(tripletIndex + 2, interpolatedEdgesInTetrahedronSpace[tetrahedronTriTable[tetraIndex].z]);
     }
     else
     {
@@ -170,9 +170,9 @@ void GenerateTrianglesFromTetrahedron(FTetrahedron tetra, int tetraIndex, float3
     {		
         int tripletIndex;
         InterlockedAdd(vertexTripletIndex[0], 3, tripletIndex);
-        SetOutputVertex(tripletIndex, interpolatedEdgesInTetrahedronSpace[tetrahedronTriTable[tetraIndex].z]);
-        SetOutputVertex(tripletIndex + 1, interpolatedEdgesInTetrahedronSpace[tetrahedronTriTable[tetraIndex].y]);
-        SetOutputVertex(tripletIndex + 2, interpolatedEdgesInTetrahedronSpace[tetrahedronTriTable[tetraIndex].x]);
+        SetOutputVertex(tripletIndex, interpolatedEdgesInTetrahedronSpace[tetrahedronTriTable[tetraIndex].w]);
+        SetOutputVertex(tripletIndex + 1, interpolatedEdgesInTetrahedronSpace[tetrahedronTriTable[tetraIndex].z]);
+        SetOutputVertex(tripletIndex + 2, interpolatedEdgesInTetrahedronSpace[tetrahedronTriTable[tetraIndex].y]);
     }
 }
 

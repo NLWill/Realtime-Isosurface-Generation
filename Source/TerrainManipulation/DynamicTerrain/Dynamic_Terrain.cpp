@@ -104,22 +104,7 @@ void ADynamic_Terrain::CalculateMesh()
 		marchingTetrahedraGenerator->gridCellDimensions = (FVector3d)gridCellDimensions;
 		if (bUseGPU) 
 		{
-			marchingTetrahedraGenerator->GenerateOnGPU([dynamicMesh = dynamicMesh](UE::Geometry::FDynamicMesh3 generatedMesh) {
-				//UpdateDynamicMesh(generatedMesh);
-				if (dynamicMesh == nullptr)
-				{
-					UE_LOG(LogTemp, Display, TEXT("DynamicMesh is nullptr"))
-				}
-
-				if (dynamicMesh)
-				{
-					dynamicMesh->SetMesh(MoveTemp(generatedMesh));
-					dynamicMesh->NotifyMeshUpdated();
-				}
-				else {
-					UE_LOG(LogTemp, Warning, TEXT("No Mesh Component"));
-				}
-				});
+			marchingTetrahedraGenerator->GenerateOnGPU(dynamicMesh);
 		}
 		else
 		{
