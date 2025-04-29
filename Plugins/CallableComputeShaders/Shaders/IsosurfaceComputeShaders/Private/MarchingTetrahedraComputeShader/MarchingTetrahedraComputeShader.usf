@@ -15,10 +15,16 @@ float3 zeroNodeOffset;
 
 float isovalue;
 
-struct FTetrahedra
+struct FGridCell
 {
-    uint4 cornerIndices;
-    float4 values;
+	float3 positions[8];
+	float values[8];
+};
+
+struct FTetrahedron
+{
+	uint4 cornerIndices;
+	float4 values;
 };
 
 bool IsValidIndex(uint x, uint y, uint z)
@@ -60,9 +66,128 @@ uint GetArrayIndex(uint3 coord)
 // There seems to be some weird operation where the index of the RWBuffer<float3> only increments by float1 and each must be set separately
 void SetOutputVertex(uint arrayIndex, float3 value)
 {
-    outputVertexTriplets[3 * arrayIndex] = value.x;
-    outputVertexTriplets[3 * arrayIndex + 1] = value.y;
-    outputVertexTriplets[3 * arrayIndex + 2] = value.z;
+	outputVertexTriplets[3 * arrayIndex] = value.x;
+	outputVertexTriplets[3 * arrayIndex + 1] = value.y;
+	outputVertexTriplets[3 * arrayIndex + 2] = value.z;
+}
+
+uint CalculateCubeIndex(FGridCell gridCell)
+{
+    uint cubeIndex = 0;
+    for (uint i = 0; i < 8; i++)
+    {
+        if (gridCell.values[i] > isovalue)
+            cubeIndex |= (1U << i);
+    }
+    return cubeIndex;
+}
+
+uint CalculateTetrahedronIndex(FTetrahedron tetra)
+{
+    int tetraIndex = 0;
+    for (int i = 0; i < 4; i++)
+    {
+        if (tetra.values[i] > isovalue)
+            tetraIndex |= (1 << i);
+    }
+    return tetraIndex;
+}
+
+float3 InterpolateEdge(float3 vec1, float3 vec2, float val1, float val2)
+{
+    if (abs(val1 - isovalue) < 1e-5)
+        return vec1.xyz;
+    if (abs(val2 - isovalue) < 1e-5)
+        return vec2.xyz;
+    if (abs(val1 - val2) < 1e-5)
+        return vec1.xyz;
+	
+    float interpolant = (isovalue - val1) / (val2 - val1);
+    interpolant = clamp(interpolant, 0, 1);
+    return vec1.xyz + interpolant * (vec2.xyz - vec1.xyz);
+}
+
+void InterpolateVerticesOnEdges(FGridCell gridCell, int cubeIndex, out float3 interpolatedVertices[19])
+{
+	// Iterate over the 19 edges of the cube (plus diagonals from the tetrahedra)
+	// If the surface does cross this edge, find the interpolation point, otherwise write a zero vector
+    for (int edgeNumber = 0; edgeNumber < 19; edgeNumber++)
+	{
+        if (cubeEdgeTable[cubeIndex] & 1 << edgeNumber)
+		{
+            int2 vertices = cubeVerticesOnEdge[edgeNumber];
+            interpolatedVertices[edgeNumber] = InterpolateEdge(gridCell.positions[vertices.x], gridCell.positions[vertices.y], gridCell.values[vertices.x], gridCell.values[vertices.y]);
+        }
+		else
+		{
+			// This edge will not be used in calculations, so pad the list with zero vector
+            interpolatedVertices[edgeNumber] = float3(0, 0, 0);
+			// No need as the array is initialised with this anyway
+		}
+	}
+    return;
+}
+
+void GenerateTrianglesFromTetrahedron(FTetrahedron tetra, int tetraIndex, float3 interpolatedEdgesInCube[19])
+{
+	// Store the ids of the vertices within the Vertices array
+	int4 interpolatedVertexIDs;
+
+	// Translate all interpolated edge values from the cube into the tetrahedral space
+    float3 interpolatedEdgesInTetrahedronSpace[6];
+    for (int i = 0; i < 6; i++)
+    {
+        int2 tetraVertices = tetrahedronVerticesOnEdge[i];
+        int2 cubeVertices = int2(tetra.cornerIndices[tetraVertices.x], tetra.cornerIndices[tetraVertices.y]);
+        int edgeID = GetEdgeIDFromVertexPair(cubeVertices.x, cubeVertices.y);
+        if (edgeID != -1)
+        {
+            interpolatedEdgesInTetrahedronSpace[i] = interpolatedEdgesInCube[edgeID];
+        }
+        else
+        {
+			// Edge ID should never return -1 as it is a sign of a disconnect between data table definitions
+        }
+    }
+
+	// Check at least one triangle is required
+	// It should be required, due to tetraIndex checks in the TriangulateTetrahedron function
+    if (tetrahedronTriTable[tetraIndex].y != -1)
+    {
+        int tripletIndex;
+        InterlockedAdd(vertexTripletIndex[0], 3, tripletIndex);
+        SetOutputVertex(tripletIndex, interpolatedEdgesInTetrahedronSpace[tetrahedronTriTable[tetraIndex].w]);
+        SetOutputVertex(tripletIndex + 1, interpolatedEdgesInTetrahedronSpace[tetrahedronTriTable[tetraIndex].x]);
+        SetOutputVertex(tripletIndex + 2, interpolatedEdgesInTetrahedronSpace[tetrahedronTriTable[tetraIndex].y]);
+    }
+    else
+    {
+        return;
+    }
+
+	// Check whether a second triangle is required
+    if (tetrahedronTriTable[tetraIndex].z != -1)
+    {		
+        int tripletIndex;
+        InterlockedAdd(vertexTripletIndex[0], 3, tripletIndex);
+        SetOutputVertex(tripletIndex, interpolatedEdgesInTetrahedronSpace[tetrahedronTriTable[tetraIndex].z]);
+        SetOutputVertex(tripletIndex + 1, interpolatedEdgesInTetrahedronSpace[tetrahedronTriTable[tetraIndex].y]);
+        SetOutputVertex(tripletIndex + 2, interpolatedEdgesInTetrahedronSpace[tetrahedronTriTable[tetraIndex].x]);
+    }
+}
+
+void TriangulateTetrahedron(FTetrahedron tetra, float3 interpolatedEdgesInCube[19])
+{
+	// Firstly determine the tetrahedrons's unique index based upon which vertices are above/below the isovalue
+    int tetraIndex = CalculateTetrahedronIndex(tetra);
+
+	// If all vertices are inside or all outside, no triangles need to be constructed, so return false
+    if (tetrahedronEdgeTable[tetraIndex] == 0)
+        return;
+
+    GenerateTrianglesFromTetrahedron(tetra, tetraIndex, interpolatedEdgesInCube);
+
+    return;
 }
 
 [numthreads(THREADS_X, THREADS_Y, THREADS_Z)]
@@ -70,15 +195,49 @@ void MarchingTetrahedraComputeShader(
 	uint3 DispatchThreadId : SV_DispatchThreadID,
 	uint GroupIndex : SV_GroupIndex )
 {
-    uint3 gridCellToBeTriangulated = DispatchThreadId;
-    if (!IsValidIndex(gridCellToBeTriangulated))
+	// Determine which grid cell should be calculated
+	uint3 gridCellToBeTriangulated = DispatchThreadId;
+	// Check whether this is a valid grid cell and return if not
+	// There is a specific edge case where the bottom left index is valid, but the top right is not, so test the top right one instead
+	if (!IsValidIndex(gridCellToBeTriangulated + uint3(1, 1, 1)))
 	{
 		return;
 	}
 	
-    uint arrayIndex = GetArrayIndex(gridCellToBeTriangulated);
+	// Create the gridCell
+	FGridCell gridCell;
+	{
+		for (uint i = 0; i < 8; i++)
+		{
+			uint3 workingCoordinate = gridCellToBeTriangulated + cubeVertexOrder[i];
+			gridCell.positions[i] = zeroNodeOffset + float3(workingCoordinate.x * gridSizePerCube.x, workingCoordinate.y * gridSizePerCube.y, workingCoordinate.z * gridSizePerCube.z);
+			gridCell.values[i] = dataGridValues[GetArrayIndex(workingCoordinate)];
+		}
+	}
 	
-    int val0 = dataGridValues[arrayIndex];
-    SetOutputVertex(arrayIndex, gridCellToBeTriangulated);
-	InterlockedAdd(vertexTripletIndex[0], 1);
+	// Firstly determine the cube's unique index based upon which vertices are above/below the isovalue
+	uint cubeIndex = CalculateCubeIndex(gridCell);
+
+	// If all vertices are inside or all outside, no triangles need to be constructed, so return false
+	if (cubeEdgeTable[cubeIndex] == 0)
+		return;
+
+	// Interpolate edges
+	// Edges are interpolated for the cube to remove duplicate interpolation calculations
+    float3 interpolatedEdgesInCube[19];
+	InterpolateVerticesOnEdges(gridCell, cubeIndex, interpolatedEdgesInCube);
+
+	// Iterate over each tetrahedron
+	for (int tetrahedronNumber = 0; tetrahedronNumber < 6; tetrahedronNumber++)
+	{
+		// Initialise the tetrahedron
+		FTetrahedron tetra;
+		for (uint tetrahedronVertex = 0; tetrahedronVertex < 4; tetrahedronVertex++)
+		{
+			tetra.cornerIndices[tetrahedronVertex] = tetrahedronList[tetrahedronNumber][tetrahedronVertex];
+			tetra.values[tetrahedronVertex] = gridCell.values[tetrahedronList[tetrahedronNumber][tetrahedronVertex]];
+		}
+		// Create the triangles required for this tetrahedron
+		TriangulateTetrahedron(tetra, interpolatedEdgesInCube);
+	}
 }
