@@ -9,6 +9,12 @@
 #include "MarchingTetrahedra/MarchingTetrahedraGenerator.h"
 #include "Dynamic_Terrain.generated.h"
 
+UENUM()
+enum class EIsosurfaceGenerationAlgorithm {
+	IGA_MarchingCubes,
+	IGA_MarchingTetrahedra
+};
+
 UCLASS()
 class TERRAINMANIPULATION_API ADynamic_Terrain : public AActor
 {
@@ -44,7 +50,7 @@ protected:
 	bool bEnableCollision = true;
 
 	UPROPERTY(EditAnywhere)
-	bool bUseMarchingCubes;
+	EIsosurfaceGenerationAlgorithm surfaceGenerationAlgorithm;
 
 	UPROPERTY(EditAnywhere)
 	bool bUseGPU;

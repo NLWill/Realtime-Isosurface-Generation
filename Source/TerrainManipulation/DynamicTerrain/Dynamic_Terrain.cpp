@@ -19,25 +19,12 @@ ADynamic_Terrain::ADynamic_Terrain()
 	dynamicMesh = CreateDefaultSubobject<UDynamicMeshComponent>(TEXT("Dynamic Mesh"), false);
 	SetRootComponent(dynamicMesh);
 
-	//InitialiseDataGrid();
-	//MarchingTetrahedraGenerator marchingTetrahedra = MarchingTetrahedraGenerator(dataGrid);
-	//marchingTetrahedra.isovalue = -3.5;
-	//FDynamicMesh3 mesh = marchingTetrahedra.Generate();
-	//FDynamicMesh3 mesh;
-	//mesh.AppendVertex(FVector3d());
-	//mesh.AppendVertex(FVector3d(100,0,0));
-	//mesh.AppendVertex(FVector3d(100,-100,0));
-	//mesh.AppendTriangle(0, 1, 2);
-	//mesh.AppendTriangle(2, 1, 0);
-	//dynamicMesh->SetMesh(MoveTemp(mesh));
-
 	gridPointCount = FIntVector3(5, 5, 5);
 	bottomLeftAnchor = FVector3f::Zero();
 	topRightAnchor = FVector3f(200, 200, 200);
 
 	isovalue = 0;
 	bUseGPU = false;
-	bUseMarchingCubes = false;
 }
 
 // Called when the game starts or when spawned
@@ -77,10 +64,8 @@ void ADynamic_Terrain::CalculateMesh()
 	FVector3f gridCellDimensions = FVector3f(sizeX, sizeY, sizeZ);
 
 	FDynamicMesh3 mesh;
-
-	if (bUseMarchingCubes) 
-	{
-		// Marching Cubes Method
+	switch (surfaceGenerationAlgorithm) {
+	case EIsosurfaceGenerationAlgorithm::IGA_MarchingCubes:
 		marchingCubesGenerator = std::make_unique<MarchingCubesGenerator>();
 		marchingCubesGenerator->dataGrid = dataGrid;
 		marchingCubesGenerator->isovalue = isovalue;
@@ -95,16 +80,14 @@ void ADynamic_Terrain::CalculateMesh()
 			mesh = marchingCubesGenerator->GenerateOnCPU();
 			UpdateDynamicMesh(mesh);
 		}
-	}
-	else
-	{
-		//MarchingTetrahedraGenerator* marchingTetrahedra = NewObject<MarchingTetrahedraGenerator>();
+		break;
+	case EIsosurfaceGenerationAlgorithm::IGA_MarchingTetrahedra:
 		marchingTetrahedraGenerator = std::make_unique<MarchingTetrahedraGenerator>();
 		marchingTetrahedraGenerator->dataGrid = dataGrid;
 		marchingTetrahedraGenerator->isovalue = isovalue;
 		marchingTetrahedraGenerator->gridCellDimensions = gridCellDimensions;
 		marchingTetrahedraGenerator->zeroCellOffset = FVector3f::ZeroVector;
-		if (bUseGPU) 
+		if (bUseGPU)
 		{
 			marchingTetrahedraGenerator->GenerateOnGPU(dynamicMesh);
 		}
@@ -113,6 +96,7 @@ void ADynamic_Terrain::CalculateMesh()
 			mesh = marchingTetrahedraGenerator->GenerateOnCPU();
 			UpdateDynamicMesh(mesh);
 		}
+		break;
 	}
 }
 
