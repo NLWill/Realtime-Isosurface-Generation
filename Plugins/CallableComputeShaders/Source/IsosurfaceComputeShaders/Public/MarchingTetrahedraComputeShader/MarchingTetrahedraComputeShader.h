@@ -41,34 +41,34 @@ public:
 	// Executes this shader on the render thread
 	static void DispatchRenderThread(
 		FRHICommandListImmediate& RHICmdList,
-		FMarchingTetrahedraComputeShaderDispatchParams Params,
+		FMarchingTetrahedraComputeShaderDispatchParams params,
 		TFunction<void(TArray<FVector3f> outputVertexTriplets)> AsyncCallback
 	);
 
 	// Executes this shader on the render thread from the game thread via EnqueueRenderThreadCommand
 	static void DispatchGameThread(
-		FMarchingTetrahedraComputeShaderDispatchParams Params,
+		FMarchingTetrahedraComputeShaderDispatchParams params,
 		TFunction<void(TArray<FVector3f> outputVertexTriplets)> AsyncCallback
 	)
 	{
 		ENQUEUE_RENDER_COMMAND(SceneDrawCompletion)(
-			[Params, AsyncCallback](FRHICommandListImmediate& RHICmdList)
+			[params, AsyncCallback](FRHICommandListImmediate& RHICmdList)
 			{
-				DispatchRenderThread(RHICmdList, Params, AsyncCallback);
+				DispatchRenderThread(RHICmdList, params, AsyncCallback);
 			});
 	}
 
 	// Dispatches this shader. Can be called from any thread
 	static void Dispatch(
-		FMarchingTetrahedraComputeShaderDispatchParams Params,
+		FMarchingTetrahedraComputeShaderDispatchParams params,
 		TFunction<void(TArray<FVector3f> outputVertexTriplets)> AsyncCallback
 	)
 	{
 		if (IsInRenderingThread()) {
-			DispatchRenderThread(GetImmediateCommandList_ForRenderCommand(), Params, AsyncCallback);
+			DispatchRenderThread(GetImmediateCommandList_ForRenderCommand(), params, AsyncCallback);
 		}
 		else {
-			DispatchGameThread(Params, AsyncCallback);
+			DispatchGameThread(params, AsyncCallback);
 		}
 	}
 };
@@ -88,22 +88,19 @@ public:
 	// Execute the actual load
 	virtual void Activate() override
 	{
+		if (params.dataGridValues.Num() <= 0 || params.gridSizePerCube.Length() == 0)
+		{
+			UE_LOG(LogTemp, Display, TEXT("MarchingCubesComputeShaderDispatchParams not completely configured"))
+		}
+
 		// Dispatch the compute shader and wait until it completes
-		FMarchingTetrahedraComputeShaderInterface::Dispatch(Params, [this](TArray<FVector3f> outputVertexTriplets)
+		FMarchingTetrahedraComputeShaderInterface::Dispatch(params, [this](TArray<FVector3f> outputVertexTriplets)
 			{
 				Completed.Broadcast(outputVertexTriplets);
-				/*if (Completed.IsBound()) {
-					Completed.Execute(outputVertexTriplets);
-				}
-				else {
-					UE_LOG(LogTemp, Display, TEXT("Why is this not bound any more"))
-				}*/
 			});
 	}
 
-
-	UPROPERTY(BlueprintAssignable)
 	FOnMarchingTetrahedraComputeShaderLibrary_AsyncExecutionCompleted Completed;
 
-	FMarchingTetrahedraComputeShaderDispatchParams Params;
+	FMarchingTetrahedraComputeShaderDispatchParams params;
 };

@@ -6,11 +6,12 @@
 #include "DynamicMesh/DynamicMesh3.h"
 #include "Components/DynamicMeshComponent.h"
 #include "TerrainManipulation/DataStructs/TArray3D.h"
+#include "../MarchingCubes/ISurfaceGenerationAlgorithm.h"
 
 /**
  *
  */
-class TERRAINMANIPULATION_API MarchingTetrahedraGenerator
+class TERRAINMANIPULATION_API MarchingTetrahedraGenerator : public ISurfaceGenerationAlgorithm
 {
 public:
 	MarchingTetrahedraGenerator();
@@ -19,23 +20,11 @@ public:
 	MarchingTetrahedraGenerator(const MarchingTetrahedraGenerator& other);
 	virtual ~MarchingTetrahedraGenerator() = default;
 
-	// The 3D array of data that informs the shape of the isosurface
-	TArray3D<float> dataGrid;
-
-	// The value at which the surface shall be drawn
-	float isovalue = 0;
-
-	// The length of the grid cell along each local axis
-	FVector3d gridCellDimensions;
-
-public:
-	// The mesh that shall be returned after the algorithm is complete
-	UE::Geometry::FDynamicMesh3 generatedMesh = UE::Geometry::FDynamicMesh3::FDynamicMesh3();
-
 public:
 	/// <summary>
 	/// Generate the mesh using compute shaders on the GPU
 	/// </summary>
+	/// <param name="dynamicMesh">The DynamicMeshComponent that will receive the new mesh</param>
 	void GenerateOnGPU(UDynamicMeshComponent* dynamicMesh);
 
 	/// <summary>
@@ -129,7 +118,10 @@ protected:
 	/// <param name="interpolatedEdgesInCube">The interpolated edges of the cube</param>
 	void GenerateTrianglesFromTetrahedron(const FTetrahedron& tetra, int tetraIndex, const TArray<FVector3d>& interpolatedEdgesInCube);
 
-	UFUNCTION()
+	/// <summary>
+	/// Update the FDynamicMesh3 struct with the latest vertex triplets for the mesh
+	/// </summary>
+	/// <param name="vertexTripletList">The list of vertices to be made into a mesh</param>
 	void CreateMeshFromVertexTriplets(const TArray<FVector3f>& vertexTripletList);
 
 	/// <summary>

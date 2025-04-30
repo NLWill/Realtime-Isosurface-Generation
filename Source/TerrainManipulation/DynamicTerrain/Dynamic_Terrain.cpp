@@ -81,27 +81,29 @@ void ADynamic_Terrain::CalculateMesh()
 	if (bUseMarchingCubes) 
 	{
 		// Marching Cubes Method
-		delete marchingCubesGenerator;
-		marchingCubesGenerator = new MarchingCubesGenerator();
-		marchingCubesGenerator->bGPUCompute = bUseGPU;
-		TArray<FVector3f> vertices = marchingCubesGenerator->RunAlgorithm(dataGrid, gridCellDimensions, bottomLeftAnchor, isovalue);
-
-		for (size_t i = 0; i < vertices.Num(); i+=3)
+		marchingCubesGenerator = std::make_unique<MarchingCubesGenerator>();
+		marchingCubesGenerator->dataGrid = dataGrid;
+		marchingCubesGenerator->isovalue = isovalue;
+		marchingCubesGenerator->gridCellDimensions = gridCellDimensions;
+		marchingCubesGenerator->zeroCellOffset = FVector3f::ZeroVector;
+		if (bUseGPU)
 		{
-			mesh.AppendVertex((FVector3d)vertices[i]);
-			mesh.AppendVertex((FVector3d)vertices[i + 1]);
-			mesh.AppendVertex((FVector3d)vertices[i + 2]);
-			mesh.AppendTriangle(i, i + 1, i + 2);
+			marchingCubesGenerator->GenerateOnGPU(dynamicMesh);
+		}
+		else
+		{
+			mesh = marchingCubesGenerator->GenerateOnCPU();
+			UpdateDynamicMesh(mesh);
 		}
 	}
 	else
 	{
 		//MarchingTetrahedraGenerator* marchingTetrahedra = NewObject<MarchingTetrahedraGenerator>();
-		delete marchingTetrahedraGenerator;
-		marchingTetrahedraGenerator = new MarchingTetrahedraGenerator();
+		marchingTetrahedraGenerator = std::make_unique<MarchingTetrahedraGenerator>();
 		marchingTetrahedraGenerator->dataGrid = dataGrid;
 		marchingTetrahedraGenerator->isovalue = isovalue;
-		marchingTetrahedraGenerator->gridCellDimensions = (FVector3d)gridCellDimensions;
+		marchingTetrahedraGenerator->gridCellDimensions = gridCellDimensions;
+		marchingTetrahedraGenerator->zeroCellOffset = FVector3f::ZeroVector;
 		if (bUseGPU) 
 		{
 			marchingTetrahedraGenerator->GenerateOnGPU(dynamicMesh);
@@ -109,24 +111,9 @@ void ADynamic_Terrain::CalculateMesh()
 		else
 		{
 			mesh = marchingTetrahedraGenerator->GenerateOnCPU();
+			UpdateDynamicMesh(mesh);
 		}
 	}
-
-	UpdateDynamicMesh(mesh);
-
-	//UE_LOG(LogTemp, Display, TEXT("Number of tris in mesh: %d"), mesh.TriangleCount())
-	//FBasicComputeShaderDispatchParams computeShaderParams(1, 1, 1);
-	//int inp1 = 31, inp2 = 11;
-	//computeShaderParams.Input[0] = inp1;
-	//computeShaderParams.Input[1] = inp2;
-
-	//FBasicComputeShaderInterface::Dispatch(computeShaderParams, 
-	//	[inp1, inp2](int result) 
-	//	{	
-	//		// Begin compute shader callback
-	//		UE_LOG(LogTemp, Display, TEXT("C++ compute shader, %d * %d = %d"), inp1, inp2, result)
-	//		// End compute shader callback
-	//	});
 }
 
 FVector3d ADynamic_Terrain::GetLocalPositionOfGridPoint(int x, int y, int z) const
@@ -310,7 +297,7 @@ UE::Geometry::FDynamicMesh3 ADynamic_Terrain::RegenerateByHand()
 	return mesh;
 }
 
-void ADynamic_Terrain::UpdateDynamicMesh(UE::Geometry::FDynamicMesh3 mesh)
+void ADynamic_Terrain::UpdateDynamicMesh(UE::Geometry::FDynamicMesh3& mesh)
 {
 	if (dynamicMesh == nullptr)
 	{

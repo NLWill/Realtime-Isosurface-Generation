@@ -104,7 +104,7 @@ private:
 //                            ShaderType                            ShaderPath                     Shader function name    Type
 IMPLEMENT_GLOBAL_SHADER(FMarchingTetrahedraComputeShader, "/IsosurfaceComputeShadersShaders/MarchingTetrahedraComputeShader/MarchingTetrahedraComputeShader.usf", "MarchingTetrahedraComputeShader", SF_Compute);
 
-void FMarchingTetrahedraComputeShaderInterface::DispatchRenderThread(FRHICommandListImmediate& RHICmdList, FMarchingTetrahedraComputeShaderDispatchParams Params, TFunction<void(TArray<FVector3f> outputVertexTriplets)> AsyncCallback) {
+void FMarchingTetrahedraComputeShaderInterface::DispatchRenderThread(FRHICommandListImmediate& RHICmdList, FMarchingTetrahedraComputeShaderDispatchParams params, TFunction<void(TArray<FVector3f> outputVertexTriplets)> AsyncCallback) {
 	FRDGBuilder GraphBuilder(RHICmdList);
 
 	{
@@ -125,45 +125,45 @@ void FMarchingTetrahedraComputeShaderInterface::DispatchRenderThread(FRHICommand
 
 		if (bIsShaderValid)
 		{
-			FMarchingTetrahedraComputeShader::FParameters* PassParameters = GraphBuilder.AllocParameters<FMarchingTetrahedraComputeShader::FParameters>();
+			FMarchingTetrahedraComputeShader::FParameters* passParameters = GraphBuilder.AllocParameters<FMarchingTetrahedraComputeShader::FParameters>();
 
 			// Create input buffer for dataGridValues
-			int32 dataGridValuesLength = Params.dataGridValues.Num();
-			auto dataGridBuffer = CreateStructuredBuffer(GraphBuilder, TEXT("DataGridBuffer"), sizeof(float), dataGridValuesLength, Params.dataGridValues.GetData(), sizeof(float) * dataGridValuesLength, ERDGInitialDataFlags::None);
+			int32 dataGridValuesLength = params.dataGridValues.Num();
+			auto dataGridBuffer = CreateStructuredBuffer(GraphBuilder, TEXT("DataGridBuffer"), sizeof(float), dataGridValuesLength, params.dataGridValues.GetData(), sizeof(float) * dataGridValuesLength, ERDGInitialDataFlags::None);
 			auto dataGridSRV = GraphBuilder.CreateSRV(dataGridBuffer, PF_R32_FLOAT);
-			PassParameters->dataGridValues = dataGridSRV;
+			passParameters->dataGridValues = dataGridSRV;
 
 			// Create output buffer for number of tris created
 			TArray<int32> vertexTripletIndexValues = { 0 };
 			int32 vertexTripletIndexLength = vertexTripletIndexValues.Num();
 			auto vertexTripletIndexBuffer = CreateStructuredBuffer(GraphBuilder, TEXT("VertexTipletCount"), sizeof(uint32), vertexTripletIndexLength, vertexTripletIndexValues.GetData(), sizeof(uint32) * vertexTripletIndexLength, ERDGInitialDataFlags::None);
 			auto vertexTripletIndexUAV = GraphBuilder.CreateUAV(vertexTripletIndexBuffer, PF_R32_UINT);
-			PassParameters->vertexTripletIndex = vertexTripletIndexUAV;
+			passParameters->vertexTripletIndex = vertexTripletIndexUAV;
 
 			// Create output buffer for the vertices of the tris
-			// 12 is the max tris possbile in a single grid cell
-			int maxPossibleTriTriplets = 12 * 3 * (Params.gridPointCount.X - 1) * (Params.gridPointCount.Y - 1) * (Params.gridPointCount.Z - 1);
+			// 12 is the max tris possbile in a single grid cell for Marching Tetrahedra
+			int maxPossibleTriTriplets = 12 * 3 * (params.gridPointCount.X - 1) * (params.gridPointCount.Y - 1) * (params.gridPointCount.Z - 1);
 			// This is the maximum theoretically possible tris for any data grid
 			TArray<FVector3f> outputVertexList;
 			outputVertexList.Init(FVector3f::ZeroVector, maxPossibleTriTriplets);
-			auto outputVertexListBuffer = CreateStructuredBuffer(GraphBuilder, TEXT("VertexTipletCount"), sizeof(FVector3f), maxPossibleTriTriplets, outputVertexList.GetData(), sizeof(FVector3f) * maxPossibleTriTriplets, ERDGInitialDataFlags::None);
+			auto outputVertexListBuffer = CreateStructuredBuffer(GraphBuilder, TEXT("OutputVertexTipletList"), sizeof(FVector3f), maxPossibleTriTriplets, outputVertexList.GetData(), sizeof(FVector3f) * maxPossibleTriTriplets, ERDGInitialDataFlags::None);
 			auto outputVertexListUAV = GraphBuilder.CreateUAV(outputVertexListBuffer, PF_R32_UINT);
-			PassParameters->outputVertexTriplets = outputVertexListUAV;
+			passParameters->outputVertexTriplets = outputVertexListUAV;
 
 			// Set the trivial variables
-			PassParameters->gridPointCount = Params.gridPointCount;
-			PassParameters->gridSizePerCube = Params.gridSizePerCube;
-			PassParameters->zeroNodeOffset = Params.zeroNodeOffset;
-			PassParameters->isovalue = Params.isovalue;
+			passParameters->gridPointCount = params.gridPointCount;
+			passParameters->gridSizePerCube = params.gridSizePerCube;
+			passParameters->zeroNodeOffset = params.zeroNodeOffset;
+			passParameters->isovalue = params.isovalue;
 
 			// Calculate the number of worker groups required
-			int groupCountX = FMath::CeilToInt((float)Params.gridPointCount.X / NUM_THREADS_MarchingTetrahedraComputeShader_X);
-			int groupCountY = FMath::CeilToInt((float)Params.gridPointCount.Y / NUM_THREADS_MarchingTetrahedraComputeShader_Y);
-			int groupCountZ = FMath::CeilToInt((float)Params.gridPointCount.Z / NUM_THREADS_MarchingTetrahedraComputeShader_Z);
+			int groupCountX = FMath::CeilToInt((float)params.gridPointCount.X / NUM_THREADS_MarchingTetrahedraComputeShader_X);
+			int groupCountY = FMath::CeilToInt((float)params.gridPointCount.Y / NUM_THREADS_MarchingTetrahedraComputeShader_Y);
+			int groupCountZ = FMath::CeilToInt((float)params.gridPointCount.Z / NUM_THREADS_MarchingTetrahedraComputeShader_Z);
 			FIntVector GroupCount(groupCountX, groupCountY, groupCountZ);
 
 			// Add a pass of the compute shader to the render graph
-			FComputeShaderUtils::AddPass(GraphBuilder, RDG_EVENT_NAME("ExecuteMarchingTetrahedraComputeShader"), ComputeShader, PassParameters, GroupCount);
+			FComputeShaderUtils::AddPass(GraphBuilder, RDG_EVENT_NAME("ExecuteMarchingTetrahedraComputeShader"), ComputeShader, passParameters, GroupCount);
 
 			// Configure the readback for the data
 			FRHIGPUBufferReadback* GPUBufferReadbackTripletCount = new FRHIGPUBufferReadback(TEXT("MarchingTetrahedraComputeShaderOutputVertexTripletCount"));

@@ -104,7 +104,7 @@ public:
 	/// Update the dynamic mesh component with a new FDynamicMesh3 mesh
 	/// </summary>
 	/// <param name="mesh">The new mesh to be rendered</param>
-	void UpdateDynamicMesh(UE::Geometry::FDynamicMesh3 mesh);
+	void UpdateDynamicMesh(UE::Geometry::FDynamicMesh3& mesh);
 
 private:
 
@@ -118,6 +118,6 @@ private:
 	TArray3D<float> dataGrid;
 
 	// Retain the objects to ensure object lifetime is long enough for the async compute shaders
-	MarchingCubesGenerator* marchingCubesGenerator;
-	MarchingTetrahedraGenerator* marchingTetrahedraGenerator;
+	std::unique_ptr<ISurfaceGenerationAlgorithm> marchingCubesGenerator;
+	std::unique_ptr<ISurfaceGenerationAlgorithm> marchingTetrahedraGenerator;
 };

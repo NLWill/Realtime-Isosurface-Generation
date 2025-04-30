@@ -81,15 +81,8 @@ void MarchingTetrahedraGenerator::GenerateOnGPU(UDynamicMeshComponent* dynamicMe
 	// Run the algorithm
 	FIntVector3 gridPointCount(dataGrid.GetSize(0), dataGrid.GetSize(1), dataGrid.GetSize(2));
 
-	/*UMarchingTetrahedraComputeShaderLibrary_AsyncExecution marchTet;
-	marchTet.Params = FMarchingTetrahedraComputeShaderDispatchParams(dataGrid.GetRawDataStruct(), gridPointCount, (FVector3f)gridCellDimensions, FVector3f::ZeroVector, isovalue);
-	TSharedRef<MarchingTetrahedraGenerator> marchingTetrahedraGenerator(this);
-	resultFunctionDelegate.BindUFunction(this, FName("CreateMeshFromVertexTriplets"));
-	marchTet.Completed.Add(resultFunctionDelegate);*/
-
-	FMarchingTetrahedraComputeShaderDispatchParams params(dataGrid.GetRawDataStruct(), gridPointCount, (FVector3f)gridCellDimensions, FVector3f::ZeroVector, isovalue);
+	FMarchingTetrahedraComputeShaderDispatchParams params(dataGrid.GetRawDataStruct(), gridPointCount, gridCellDimensions, zeroCellOffset, isovalue);
 	FMarchingTetrahedraComputeShaderInterface::Dispatch(params, [this, dynamicMesh](TArray<FVector3f> outputVertexTriplets) {
-			UE_LOG(LogTemp, Display, TEXT("Made it to outermost lambda"))
 			CreateMeshFromVertexTriplets(outputVertexTriplets);
 			dynamicMesh->SetMesh(MoveTemp(generatedMesh));
 			dynamicMesh->NotifyMeshUpdated();
@@ -98,9 +91,6 @@ void MarchingTetrahedraGenerator::GenerateOnGPU(UDynamicMeshComponent* dynamicMe
 
 FDynamicMesh3 MarchingTetrahedraGenerator::GenerateOnCPU()
 {
-	std::vector<FVector> verts;
-	std::vector<FIndex3i> tris;
-
 	FGridCell gridCell;
 	FVector3i gridIndex = FVector3i(0, 0, 0);
 
@@ -285,7 +275,7 @@ void MarchingTetrahedraGenerator::GenerateTrianglesFromTetrahedron(const FTetrah
 
 void MarchingTetrahedraGenerator::CreateMeshFromVertexTriplets(const TArray<FVector3f>& vertexTripletList)
 {
-	UE_LOG(LogTemp, Display, TEXT("Finished the Marching Tetrahedra GPU and creating the mesh. List length is %d"), vertexTripletList.Num())
+	generatedMesh.Clear();
 
 	for (int i = 0; i < vertexTripletList.Num(); i += 3)
 	{

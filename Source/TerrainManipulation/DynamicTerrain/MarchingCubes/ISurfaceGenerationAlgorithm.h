@@ -4,6 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "TerrainManipulation/DataStructs/TArray3D.h"
+#include "DynamicMesh/DynamicMesh3.h"
+#include "Components/DynamicMeshComponent.h"
 
 /**
  * 
@@ -14,13 +16,28 @@ public:
 	virtual ~ISurfaceGenerationAlgorithm();
 
 	/// <summary>
-	/// Run the algorithm over the data points to create a surface of triangles. For the grid data, values <= 0 are outside the surface and > 0 are inside.
+	/// Generate the mesh using compute shaders on the GPU
 	/// </summary>
-	/// <param name="gridData">The data instructing the composition of the surface</param>
-	/// <param name="bias">The offset to the grid data to adjust where the surface is being constructed</param>
-	/// <returns>An array of vertex IDs required to create the triangles of this surface</returns>
-	virtual TArray<FVector3f> RunAlgorithm(const TArray3D<float>& gridData, FVector3f sizeOfCell, FVector3f offsetOfZeroCell, float isovalue = 0) = 0;
+	/// <param name="dynamicMesh">The DynamicMeshComponent that will receive the new mesh</param>
+	virtual void GenerateOnGPU(UDynamicMeshComponent* dynamicMesh) = 0;
 
-	// Should this generator run in parallel on the GPU?
-	bool bGPUCompute = false;
+	/// <summary>
+	/// Generate the mesh with linear computation on the CPU
+	/// </summary>
+	virtual UE::Geometry::FDynamicMesh3 GenerateOnCPU() = 0;
+
+	// The 3D array of data that informs the shape of the isosurface
+	TArray3D<float> dataGrid;
+
+	// The value at which the surface shall be drawn
+	float isovalue = 0;
+
+	// The length of the grid cell along each local axis
+	FVector3f gridCellDimensions;
+
+	// The position of the (0,0,0) vertex in relation to the UDynamicMeshComponent
+	FVector3f zeroCellOffset;
+
+	// The mesh that shall be returned after the algorithm is complete
+	UE::Geometry::FDynamicMesh3 generatedMesh = UE::Geometry::FDynamicMesh3::FDynamicMesh3();
 };
