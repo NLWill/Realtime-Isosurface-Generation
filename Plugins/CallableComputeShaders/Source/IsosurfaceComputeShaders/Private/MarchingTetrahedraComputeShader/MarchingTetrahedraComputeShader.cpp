@@ -104,7 +104,8 @@ private:
 //                            ShaderType                            ShaderPath                     Shader function name    Type
 IMPLEMENT_GLOBAL_SHADER(FMarchingTetrahedraComputeShader, "/IsosurfaceComputeShadersShaders/MarchingTetrahedraComputeShader/MarchingTetrahedraComputeShader.usf", "MarchingTetrahedraComputeShader", SF_Compute);
 
-void FMarchingTetrahedraComputeShaderInterface::DispatchRenderThread(FRHICommandListImmediate& RHICmdList, FMarchingTetrahedraComputeShaderDispatchParams params, TFunction<void(TArray<FVector3f> outputVertexTriplets)> AsyncCallback) {
+void FMarchingTetrahedraComputeShaderInterface::DispatchRenderThread(FRHICommandListImmediate& RHICmdList, FMarchingTetrahedraComputeShaderDispatchParams params, TFunction<void(TArray<FVector3f> outputVertexTriplets)> AsyncCallback) 
+{
 	FRDGBuilder GraphBuilder(RHICmdList);
 
 	{
@@ -175,16 +176,12 @@ void FMarchingTetrahedraComputeShaderInterface::DispatchRenderThread(FRHICommand
 				if (GPUBufferReadbackTripletCount->IsReady() && GPUBufferReadbackVertexList->IsReady()) {
 
 					uint32* Buffer = (uint32*)GPUBufferReadbackTripletCount->Lock(1);
-					uint32 OutVal = Buffer[0];
+					uint32 numberOfVerticesInList = Buffer[0];
 					GPUBufferReadbackTripletCount->Unlock();
 
-					FVector3f* outputVertexList = (FVector3f*)GPUBufferReadbackVertexList->Lock(OutVal * sizeof(FVector3f));
-					TArray<FVector3f> outputVertexArray(outputVertexList, OutVal);
+					FVector3f* outputVertexList = (FVector3f*)GPUBufferReadbackVertexList->Lock(numberOfVerticesInList * sizeof(FVector3f));
+					TArray<FVector3f> outputVertexArray(outputVertexList, numberOfVerticesInList);
 					GPUBufferReadbackVertexList->Unlock();
-					/*for (FVector3f& item : outputVertexArray)
-					{
-						UE_LOG(LogTemp, Display, TEXT("%s"), *item.ToString())
-					}*/
 
 					AsyncTask(ENamedThreads::GameThread, [AsyncCallback, outputVertexArray]()
 						{

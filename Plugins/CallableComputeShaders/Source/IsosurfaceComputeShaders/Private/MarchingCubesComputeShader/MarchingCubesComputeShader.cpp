@@ -197,107 +197,113 @@ void FMarchingCubesComputeShaderInterface::DispatchRenderThread(FRHICommandListI
 {
 	FRDGBuilder GraphBuilder(RHICmdList);
 
-	// Get a reference to the relevant compute shader
-	SCOPE_CYCLE_COUNTER(STAT_MarchingCubesComputeShader_Execute);
-	DECLARE_GPU_STAT(MarchingCubesComputeShader)
-	RDG_EVENT_SCOPE(GraphBuilder, "MarchingCubesComputeShader");
-	RDG_GPU_STAT_SCOPE(GraphBuilder, MarchingCubesComputeShader);
-
-	typename FMarchingCubesComputeShader::FPermutationDomain PermutationVector;
-
-	// Add any static permutation options here
-	// PermutationVector.Set<FMarchingCubesComputeShader::FMyPermutationName>(12345);
-
-	TShaderMapRef<FMarchingCubesComputeShader> ComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel), PermutationVector);
-
-	// Check if the shader is valid before calling
-	bool bIsShaderValid = ComputeShader.IsValid();
-
-	if (bIsShaderValid)
 	{
-		FMarchingCubesComputeShader::FParameters* passParameters = GraphBuilder.AllocParameters<FMarchingCubesComputeShader::FParameters>();
+		SCOPE_CYCLE_COUNTER(STAT_MarchingCubesComputeShader_Execute);
+		DECLARE_GPU_STAT(MarchingCubesComputeShader)
+		RDG_EVENT_SCOPE(GraphBuilder, "MarchingCubesComputeShader");
+		RDG_GPU_STAT_SCOPE(GraphBuilder, MarchingCubesComputeShader);
 
-		// Create input buffer for dataGridValues
-		int32 dataGridValuesLength = params.dataGridValues.Num();
-		auto dataGridBuffer = CreateStructuredBuffer(GraphBuilder, TEXT("DataGridBuffer"), sizeof(float), dataGridValuesLength, params.dataGridValues.GetData(), sizeof(float) * dataGridValuesLength, ERDGInitialDataFlags::None);
-		auto dataGridSRV = GraphBuilder.CreateSRV(dataGridBuffer, PF_R32_FLOAT);
-		passParameters->dataGridValues = dataGridSRV;
+		typename FMarchingCubesComputeShader::FPermutationDomain PermutationVector;
 
-		// Create output buffer for number of tris created
-		TArray<int32> vertexTripletIndexValues = { 0 };
-		int32 vertexTripletIndexLength = vertexTripletIndexValues.Num();
-		auto vertexTripletIndexBuffer = CreateStructuredBuffer(GraphBuilder, TEXT("VertexTipletCount"), sizeof(uint32), vertexTripletIndexLength, vertexTripletIndexValues.GetData(), sizeof(uint32) * vertexTripletIndexLength, ERDGInitialDataFlags::None);
-		auto vertexTripletIndexUAV = GraphBuilder.CreateUAV(vertexTripletIndexBuffer, PF_R32_UINT);
-		passParameters->vertexTripletIndex = vertexTripletIndexUAV;
+		// Add any static permutation options here
+		// PermutationVector.Set<FMarchingCubesComputeShader::FMyPermutationName>(12345);
 
-		// Create output buffer for the vertices of the tris
-		// 5 is the max tris possbile in a single grid cell for Marching Cubes
-		int maxPossibleTriTriplets = 5 * 3 * (params.gridPointCount.X - 1) * (params.gridPointCount.Y - 1) * (params.gridPointCount.Z - 1);
-		// This is the maximum theoretically possible tris for any data grid
-		TArray<FVector3f> outputVertexList;
-		outputVertexList.Init(FVector3f::ZeroVector, maxPossibleTriTriplets);
-		auto outputVertexListBuffer = CreateStructuredBuffer(GraphBuilder, TEXT("OutputVertexTipletList"), sizeof(FVector3f), maxPossibleTriTriplets, outputVertexList.GetData(), sizeof(FVector3f) * maxPossibleTriTriplets, ERDGInitialDataFlags::None);
-		auto outputVertexListUAV = GraphBuilder.CreateUAV(outputVertexListBuffer, PF_R32_UINT);
-		passParameters->outputVertexTriplets = outputVertexListUAV;
+		TShaderMapRef<FMarchingCubesComputeShader> ComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel), PermutationVector);
 
-		// Set the trivial variables
-		passParameters->gridPointCount = params.gridPointCount;
-		passParameters->gridSizePerCube = params.gridSizePerCube;
-		passParameters->zeroNodeOffset = params.zeroNodeOffset;
-		passParameters->isovalue = params.isovalue;
 
-		// Calculate the number of worker groups required
-		int groupCountX = FMath::CeilToInt((float)params.gridPointCount.X / NUM_THREADS_MarchingCubesComputeShader_X);
-		int groupCountY = FMath::CeilToInt((float)params.gridPointCount.Y / NUM_THREADS_MarchingCubesComputeShader_Y);
-		int groupCountZ = FMath::CeilToInt((float)params.gridPointCount.Z / NUM_THREADS_MarchingCubesComputeShader_Z);
-		FIntVector GroupCount(groupCountX, groupCountY, groupCountZ);
+		bool bIsShaderValid = ComputeShader.IsValid();
 
-		// Add a pass of the compute shader to the render graph
-		FComputeShaderUtils::AddPass(GraphBuilder, RDG_EVENT_NAME("ExecuteMarchingCubesComputeShader"), ComputeShader, passParameters, GroupCount);
+		if (bIsShaderValid)
+		{
+			FMarchingCubesComputeShader::FParameters* passParameters = GraphBuilder.AllocParameters<FMarchingCubesComputeShader::FParameters>();
 
-		// Configure the readback for the data
-		FRHIGPUBufferReadback* GPUBufferReadbackTripletCount = new FRHIGPUBufferReadback(TEXT("MarchingCubesComputeShaderOutputVertexTripletCount"));
-		AddEnqueueCopyPass(GraphBuilder, GPUBufferReadbackTripletCount, vertexTripletIndexBuffer, sizeof(uint32));
-		FRHIGPUBufferReadback* GPUBufferReadbackVertexList = new FRHIGPUBufferReadback(TEXT("MarchingCubesComputeShaderOutputVertexList"));
-		AddEnqueueCopyPass(GraphBuilder, GPUBufferReadbackVertexList, outputVertexListBuffer, maxPossibleTriTriplets * sizeof(FVector3f));
+			// Create input buffer for dataGridValues
+			int32 dataGridValuesLength = params.dataGridValues.Num();
+			auto dataGridBuffer = CreateStructuredBuffer(GraphBuilder, TEXT("DataGridBuffer"), sizeof(float), dataGridValuesLength, params.dataGridValues.GetData(), sizeof(float) * dataGridValuesLength, ERDGInitialDataFlags::None);
+			auto dataGridSRV = GraphBuilder.CreateSRV(dataGridBuffer, PF_R32_FLOAT);
+			passParameters->dataGridValues = dataGridSRV;
 
-		auto RunnerFunc = [GPUBufferReadbackTripletCount, GPUBufferReadbackVertexList, AsyncCallback](auto&& RunnerFunc) -> void {
-			if (GPUBufferReadbackTripletCount->IsReady() && GPUBufferReadbackVertexList->IsReady()) {
+			// Create output buffer for number of tris created
+			TArray<int32> vertexTripletIndexValues = { 0 };
+			int32 vertexTripletIndexLength = vertexTripletIndexValues.Num();
+			auto vertexTripletIndexBuffer = CreateStructuredBuffer(GraphBuilder, TEXT("VertexTipletCount"), sizeof(uint32), vertexTripletIndexLength, vertexTripletIndexValues.GetData(), sizeof(uint32) * vertexTripletIndexLength, ERDGInitialDataFlags::None);
+			auto vertexTripletIndexUAV = GraphBuilder.CreateUAV(vertexTripletIndexBuffer, PF_R32_UINT);
+			passParameters->vertexTripletIndex = vertexTripletIndexUAV;
 
-				uint32* Buffer = (uint32*)GPUBufferReadbackTripletCount->Lock(1);
-				uint32 OutVal = Buffer[0];
-				GPUBufferReadbackTripletCount->Unlock();
+			// Create output buffer for the vertices of the tris
+			// 5 is the max tris possbile in a single grid cell for Marching Cubes
+			int maxPossibleTriTriplets = 5 * 3 * (params.gridPointCount.X - 1) * (params.gridPointCount.Y - 1) * (params.gridPointCount.Z - 1);
+			// This is the maximum theoretically possible tris for any data grid
+			TArray<FVector3f> outputVertexList;
+			outputVertexList.Init(FVector3f::ZeroVector, maxPossibleTriTriplets);
+			auto outputVertexListBuffer = CreateStructuredBuffer(GraphBuilder, TEXT("OutputVertexTipletList"), sizeof(FVector3f), maxPossibleTriTriplets, outputVertexList.GetData(), sizeof(FVector3f) * maxPossibleTriTriplets, ERDGInitialDataFlags::None);
+			auto outputVertexListUAV = GraphBuilder.CreateUAV(outputVertexListBuffer, PF_R32_UINT);
+			passParameters->outputVertexTriplets = outputVertexListUAV;
 
-				FVector3f* outputVertexList = (FVector3f*)GPUBufferReadbackVertexList->Lock(OutVal * sizeof(FVector3f));
-				TArray<FVector3f> outputVertexArray(outputVertexList, OutVal);
-				GPUBufferReadbackVertexList->Unlock();
+			// Set the trivial variables
+			passParameters->gridPointCount = params.gridPointCount;
+			passParameters->gridSizePerCube = params.gridSizePerCube;
+			passParameters->zeroNodeOffset = params.zeroNodeOffset;
+			passParameters->isovalue = params.isovalue;
 
-				AsyncTask(ENamedThreads::GameThread, [AsyncCallback, outputVertexArray]()
-					{
-						AsyncCallback(outputVertexArray);
-					});
+			// Calculate the number of worker groups required
+			int groupCountX = FMath::CeilToInt((float)params.gridPointCount.X / NUM_THREADS_MarchingCubesComputeShader_X);
+			int groupCountY = FMath::CeilToInt((float)params.gridPointCount.Y / NUM_THREADS_MarchingCubesComputeShader_Y);
+			int groupCountZ = FMath::CeilToInt((float)params.gridPointCount.Z / NUM_THREADS_MarchingCubesComputeShader_Z);
+			FIntVector GroupCount(groupCountX, groupCountY, groupCountZ);
 
-				delete GPUBufferReadbackTripletCount;
-				delete GPUBufferReadbackVertexList;
-			}
-			else {
-				AsyncTask(ENamedThreads::ActualRenderingThread, [RunnerFunc]()
-					{
-						RunnerFunc(RunnerFunc);
-					});
-			}
-			};
+			// Add a pass of the compute shader to the render graph
+			FComputeShaderUtils::AddPass(GraphBuilder, RDG_EVENT_NAME("ExecuteMarchingCubesComputeShader"), ComputeShader, passParameters, GroupCount);
 
-		AsyncTask(ENamedThreads::ActualRenderingThread, [RunnerFunc]() {
-			RunnerFunc(RunnerFunc);
-			});
-			
+			// Configure the readback for the data
+			FRHIGPUBufferReadback* GPUBufferReadbackTripletCount = new FRHIGPUBufferReadback(TEXT("MarchingCubesComputeShaderOutputVertexTripletCount"));
+			AddEnqueueCopyPass(GraphBuilder, GPUBufferReadbackTripletCount, vertexTripletIndexBuffer, sizeof(uint32));
+			FRHIGPUBufferReadback* GPUBufferReadbackVertexList = new FRHIGPUBufferReadback(TEXT("MarchingCubesComputeShaderOutputVertexList"));
+			AddEnqueueCopyPass(GraphBuilder, GPUBufferReadbackVertexList, outputVertexListBuffer, maxPossibleTriTriplets * sizeof(FVector3f));
+
+			auto RunnerFunc = [GPUBufferReadbackTripletCount, GPUBufferReadbackVertexList, AsyncCallback](auto&& RunnerFunc) -> void {
+				if (GPUBufferReadbackTripletCount->IsReady() && GPUBufferReadbackVertexList->IsReady()) {
+
+					uint32* Buffer = (uint32*)GPUBufferReadbackTripletCount->Lock(1);
+					uint32 numberOfVerticesInList = Buffer[0];
+					GPUBufferReadbackTripletCount->Unlock();
+
+					FVector3f* outputVertexList = (FVector3f*)GPUBufferReadbackVertexList->Lock(numberOfVerticesInList * sizeof(FVector3f));
+					TArray<FVector3f> outputVertexArray(outputVertexList, numberOfVerticesInList);
+					GPUBufferReadbackVertexList->Unlock();
+
+					AsyncTask(ENamedThreads::GameThread, [AsyncCallback, outputVertexArray]()
+						{
+							AsyncCallback(outputVertexArray);
+						});
+
+					delete GPUBufferReadbackTripletCount;
+					delete GPUBufferReadbackVertexList;
+				}
+				else {
+					AsyncTask(ENamedThreads::ActualRenderingThread, [RunnerFunc]()
+						{
+							RunnerFunc(RunnerFunc);
+						});
+				}
+				};
+
+			AsyncTask(ENamedThreads::ActualRenderingThread, [RunnerFunc]()
+				{
+					RunnerFunc(RunnerFunc);
+				});
+
+		}
+		else
+		{
+#if WITH_EDITOR
+			GEngine->AddOnScreenDebugMessage((uint64)42145125184, 6.f, FColor::Red, FString(TEXT("The compute shader has a problem.")));
+#endif
+
+			// We exit here as we don't want to crash the game if the shader is not found or has an error.
+
+		}
 	}
-	else
-	{
-		UE_LOG(LogTemp, Display, TEXT("MarchingCubesComputeShader is not valid"))
-	}
 
-	// Execute the graph.
 	GraphBuilder.Execute();
 }
