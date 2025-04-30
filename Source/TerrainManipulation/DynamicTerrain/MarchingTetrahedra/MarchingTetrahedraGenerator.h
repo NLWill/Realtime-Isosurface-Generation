@@ -6,7 +6,7 @@
 #include "DynamicMesh/DynamicMesh3.h"
 #include "Components/DynamicMeshComponent.h"
 #include "TerrainManipulation/DataStructs/TArray3D.h"
-#include "../MarchingCubes/ISurfaceGenerationAlgorithm.h"
+#include "../ISurfaceGenerationAlgorithm.h"
 
 /**
  *
@@ -127,7 +127,8 @@ protected:
 	/// <summary>
 	/// A list of the cube vertices that make up each of the six tetrahedra contained in the cube
 	/// </summary>
-	const int tetrahedronList[6][4] = {
+	const int tetrahedronList[6][4] = 
+	{
 		{0, 1, 2, 4},
 		{1, 2, 4, 5},
 		{2, 4, 5, 6},
@@ -208,7 +209,8 @@ protected:
 	/// <summary>
 	/// A 2D array giving the edge ID that links each pair of vertices. -1 represents no edge present
 	/// </summary>
-	const int cubeVertexPairToEdge[8][8] = {
+	const int cubeVertexPairToEdge[8][8] = 
+	{
 		{-1, 0, 16, 3, 8, -1, -1, -1},
 		{0, -1, 1, -1, 12, 9, -1, -1},
 		{16, 1, -1, 2, 18, 13, 10, 14},
@@ -222,7 +224,8 @@ protected:
 	/// <summary>
 	/// List of edges required for each cube index. Bit 2^i is used to represent whether edge i is required.
 	/// </summary>
-	const int cubeEdgeTable[256] = {
+	const int cubeEdgeTable[256] = 
+	{
 		0x000000, 0x010109, 0x001203, 0x01130A, 0x056406, 0x04650F, 0x057605, 0x04770C,
 		0x00880C, 0x018905, 0x009A0F, 0x019B06, 0x05EC0A, 0x04ED03, 0x05FE09, 0x04FF00,
 		0x069190, 0x079099, 0x068393, 0x07829A, 0x03F596, 0x02F49F, 0x03E795, 0x02E69C,

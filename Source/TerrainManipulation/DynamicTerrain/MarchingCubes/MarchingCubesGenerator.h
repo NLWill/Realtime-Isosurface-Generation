@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GridCell.h"
-#include "ISurfaceGenerationAlgorithm.h"
+#include "../ISurfaceGenerationAlgorithm.h"
 
 /**
 The marching cubes algorithm to create an isosurface from a scalar field of data points.
