@@ -75,3 +75,4 @@ DerivedDataCache/*
 
 # Ignore calculations for data tables
 *.xlsx
+*.pptx
