@@ -62,6 +62,14 @@ uint GetArrayIndex(uint3 coord)
 	return GetArrayIndex(coord.x, coord.y, coord.z);
 }
 
+// There seems to be some weird operation where the index of the RWBuffer<float3> only increments by float1 and each must be set separately
+void SetOutputVertex(uint arrayIndex, float3 value)
+{
+    outputVertexTriplets[3 * arrayIndex] = value.x;
+    outputVertexTriplets[3 * arrayIndex + 1] = value.y;
+    outputVertexTriplets[3 * arrayIndex + 2] = value.z;
+}
+
 /// Convert internal array reference into grid coordinates
 uint3 GetGridReference(uint index)
 {
@@ -112,14 +120,12 @@ void MarchingCubesComputeShader(
 	
 	// Create the gridCell
 	FGridCell gridCell;
-	{
-		for (uint i = 0; i < 8; i++)
-		{
-			uint3 workingCoordinate = gridCellToBeTriangulated + vertexOrder[i];
-			gridCell.positions[i] = zeroNodeOffset + float3(workingCoordinate.x * gridSizePerCube.x, workingCoordinate.y * gridSizePerCube.y, workingCoordinate.z * gridSizePerCube.z);
-			gridCell.values[i] = dataGridValues[GetArrayIndex(workingCoordinate)];
-		}
-	}	
+    for (uint vertexNumber = 0; vertexNumber < 8; vertexNumber++)
+    {
+        uint3 workingCoordinate = gridCellToBeTriangulated + vertexOrder[vertexNumber];
+        gridCell.positions[vertexNumber] = zeroNodeOffset + float3(workingCoordinate.x * gridSizePerCube.x, workingCoordinate.y * gridSizePerCube.y, workingCoordinate.z * gridSizePerCube.z);
+        gridCell.values[vertexNumber] = dataGridValues[GetArrayIndex(workingCoordinate)];
+    }
 	
 	// Calculate the unique cube index
 	uint cubeIndex = CalculateCubeIndex(gridCell);
@@ -132,43 +138,31 @@ void MarchingCubesComputeShader(
 	float3 interpolatedVertices[12];
 	// Iterate over the 12 edges of the cube
 	// If the surface does cross this edge, find the interpolation point, otherwise write a zero vector
-	{
-		for (uint i = 0; i < 12; i++)
-		{
-			if (edgeTable[cubeIndex] & 1U << i)
-			{
-				int2 vertices = verticesOnEdge[i];
-				float3 interpolatedPoint = InterpolateEdge(gridCell.positions[vertices.x], gridCell.positions[vertices.y], gridCell.values[vertices.x], gridCell.values[vertices.y]);
-				interpolatedVertices[i] = interpolatedPoint;
-			}
-			else
-			{
+    for (uint edgeNumber = 0; edgeNumber < 12; edgeNumber++)
+    {
+        if (edgeTable[cubeIndex] & 1U << edgeNumber)
+        {
+            int2 vertices = verticesOnEdge[edgeNumber];
+            interpolatedVertices[edgeNumber] = InterpolateEdge(gridCell.positions[vertices.x], gridCell.positions[vertices.y], gridCell.values[vertices.x], gridCell.values[vertices.y]);
+        }
+        else
+        {
 			// This edge will not be used in calculations, so pad the list with zero vector
-				interpolatedVertices[i] = float3(0, 0, 0);
-			}
-		}		
-	}
+            interpolatedVertices[edgeNumber] = float3(0, 0, 0);
+        }
+    }
 	
 	// Generate the required triangles
 	// Each triad of vertices on the triTable represent a valid triangle for this cube index
 	// Iterate over the triangles and add them to the total list of needed triangles
-	{
-		for (uint i = 0; GetTriTableValue(cubeIndex, i) != -1; i += 3)
-		{
-		// Method 1 using tri structs
-		//FTriangle tri;
-		//tri.vert1 = interpolatedVertices[triTable[cubeIndex][i]];
-		//tri.vert2 = interpolatedVertices[triTable[cubeIndex][i + 1]];
-		//tri.vert3 = interpolatedVertices[triTable[cubeIndex][i + 2]];
-		//outputTriangles.Append(tri);
-		
+    for (uint i = 0; GetTriTableValue(cubeIndex, i) != -1; i += 3)
+    {
 		// Method 2 returning triplets of vertices
-			uint designatedIndex;
-			InterlockedAdd(vertexTripletIndex[0], 3, designatedIndex);
-			outputVertexTriplets[designatedIndex] = interpolatedVertices[GetTriTableValue(cubeIndex, i)];
-			outputVertexTriplets[designatedIndex + 1] = interpolatedVertices[GetTriTableValue(cubeIndex, i + 1)];
-			outputVertexTriplets[designatedIndex + 2] = interpolatedVertices[GetTriTableValue(cubeIndex, i + 2)];
-		}		
-	}
+        uint designatedIndex;
+        InterlockedAdd(vertexTripletIndex[0], 3, designatedIndex);
+        SetOutputVertex(designatedIndex, interpolatedVertices[GetTriTableValue(cubeIndex, i)]);
+        SetOutputVertex(designatedIndex + 1, interpolatedVertices[GetTriTableValue(cubeIndex, i + 1)]);
+        SetOutputVertex(designatedIndex + 2, interpolatedVertices[GetTriTableValue(cubeIndex, i + 2)]);
+    }
 }
 
