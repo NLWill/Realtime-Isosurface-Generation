@@ -13,6 +13,8 @@
 #include "Engine/LocalPlayer.h"
 #include "Engine/World.h"
 
+#include "DynamicTerrain/Dynamic_Terrain.h"
+
 // Sets default values for this component's properties
 UTerrainManipulationWeaponComponent::UTerrainManipulationWeaponComponent()
 {
@@ -29,24 +31,64 @@ void UTerrainManipulationWeaponComponent::Fire()
 	}
 
 	// Try and fire a projectile
-	if (ProjectileClass != nullptr)
+	if (firingType == EFiringType::FT_Projectile) 
 	{
-		UWorld* const World = GetWorld();
-		if (World != nullptr)
+		if (ProjectileClass != nullptr)
 		{
-			APlayerController* PlayerController = Cast<APlayerController>(Character->GetController());
-			const FRotator SpawnRotation = PlayerController->PlayerCameraManager->GetCameraRotation();
-			// MuzzleOffset is in camera space, so transform it to world space before offsetting from the character location to find the final muzzle position
-			const FVector SpawnLocation = GetOwner()->GetActorLocation() + SpawnRotation.RotateVector(MuzzleOffset);
-	
-			//Set Spawn Collision Handling Override
-			FActorSpawnParameters ActorSpawnParams;
-			ActorSpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButDontSpawnIfColliding;
-	
-			// Spawn the projectile at the muzzle
-			World->SpawnActor<ATerrainManipulationProjectile>(ProjectileClass, SpawnLocation, SpawnRotation, ActorSpawnParams);
+			UWorld* const World = GetWorld();
+			if (World != nullptr)
+			{
+				APlayerController* PlayerController = Cast<APlayerController>(Character->GetController());
+				const FRotator SpawnRotation = PlayerController->PlayerCameraManager->GetCameraRotation();
+				// MuzzleOffset is in camera space, so transform it to world space before offsetting from the character location to find the final muzzle position
+				const FVector SpawnLocation = GetOwner()->GetActorLocation() + SpawnRotation.RotateVector(MuzzleOffset);
+
+				//Set Spawn Collision Handling Override
+				FActorSpawnParameters ActorSpawnParams;
+				ActorSpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButDontSpawnIfColliding;
+
+				// Spawn the projectile at the muzzle
+				World->SpawnActor<ATerrainManipulationProjectile>(ProjectileClass, SpawnLocation, SpawnRotation, ActorSpawnParams);
+			}
 		}
 	}
+	else if (firingType == EFiringType::FT_Raycast) 
+	{
+		APlayerController* PlayerController = Cast<APlayerController>(Character->GetController());
+		const FRotator SpawnRotation = PlayerController->PlayerCameraManager->GetCameraRotation();
+		// MuzzleOffset is in camera space, so transform it to world space before offsetting from the character location to find the final muzzle position
+		const FVector SpawnLocation = GetOwner()->GetActorLocation() + SpawnRotation.RotateVector(MuzzleOffset);
+
+		// You can use this to customize various properties about the trace
+		FCollisionQueryParams Params;
+		// Ignore the player's pawn
+		Params.AddIgnoredActor(Character);
+		Params.bDebugQuery = true;
+
+		// The hit result gets populated by the line trace
+		FHitResult Hit;
+
+		// Raycast out from the camera, only collide with pawns (they are on the ECC_Pawn collision channel)
+		FVector Start = PlayerController->PlayerCameraManager->GetCameraLocation();
+		float raycastLength = 1000.0f;
+		FVector End = Start + (PlayerController->PlayerCameraManager->GetCameraRotation().Vector() * raycastLength);
+		bool bHit = GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECollisionChannel::ECC_Visibility, Params);
+
+		if (bHit) {
+			UE_LOG(LogTemp, Display, TEXT("Hit object"));
+			Hit.GetActor()->NotifyHit(Hit.GetComponent(), GetOwner(), this, false, Hit.ImpactPoint, Hit.ImpactNormal, FVector::ZeroVector, Hit);
+			/*ADynamic_Terrain* dynamicTerrain = Cast<ADynamic_Terrain>(Hit.GetActor());
+			if (dynamicTerrain) {
+				UE_LOG(LogTemp, Display, TEXT("Successfully cast to dynamic terrain"));
+				dynamicTerrain->AddToDataGridInRadius(Hit.ImpactPoint, 100, -1);
+				dynamicTerrain->CalculateMesh();
+			}*/
+		}
+		else {
+			UE_LOG(LogTemp, Display, TEXT("Miss object"))
+		}
+	}
+	
 	
 	// Try and play the sound if specified
 	if (FireSound != nullptr)

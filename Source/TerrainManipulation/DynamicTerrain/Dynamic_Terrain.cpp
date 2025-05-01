@@ -42,9 +42,17 @@ void ADynamic_Terrain::BeginPlay()
 
 	CalculateMesh();
 
+	dynamicMesh->SetNotifyRigidBodyCollision(true);
 	if (bEnableCollision)
 	{
 		dynamicMesh->SetCollisionProfileName("BlockAll");
+		dynamicMesh->EnableComplexAsSimpleCollision();
+	}
+	else
+	{
+		dynamicMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+		dynamicMesh->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
+		dynamicMesh->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 		dynamicMesh->EnableComplexAsSimpleCollision();
 	}
 }

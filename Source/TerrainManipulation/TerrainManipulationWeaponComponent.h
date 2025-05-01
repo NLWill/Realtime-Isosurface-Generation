@@ -6,6 +6,12 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "TerrainManipulationWeaponComponent.generated.h"
 
+UENUM(BlueprintType)
+enum class EFiringType : uint8 {
+	FT_Projectile,
+	FT_Raycast
+};
+
 class ATerrainManipulationCharacter;
 
 UCLASS(Blueprintable, BlueprintType, ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
@@ -14,6 +20,10 @@ class TERRAINMANIPULATION_API UTerrainManipulationWeaponComponent : public USkel
 	GENERATED_BODY()
 
 public:
+	/** What mode should the weapon use to fire */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	EFiringType firingType = EFiringType::FT_Raycast;
+
 	/** Projectile class to spawn */
 	UPROPERTY(EditDefaultsOnly, Category=Projectile)
 	TSubclassOf<class ATerrainManipulationProjectile> ProjectileClass;
