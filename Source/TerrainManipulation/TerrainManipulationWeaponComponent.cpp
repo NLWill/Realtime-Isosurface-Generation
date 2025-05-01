@@ -75,17 +75,11 @@ void UTerrainManipulationWeaponComponent::Fire()
 		bool bHit = GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECollisionChannel::ECC_Visibility, Params);
 
 		if (bHit) {
-			UE_LOG(LogTemp, Display, TEXT("Hit object"));
+			//UE_LOG(LogTemp, Display, TEXT("Hit object"));
 			Hit.GetActor()->NotifyHit(Hit.GetComponent(), GetOwner(), this, false, Hit.ImpactPoint, Hit.ImpactNormal, FVector::ZeroVector, Hit);
-			/*ADynamic_Terrain* dynamicTerrain = Cast<ADynamic_Terrain>(Hit.GetActor());
-			if (dynamicTerrain) {
-				UE_LOG(LogTemp, Display, TEXT("Successfully cast to dynamic terrain"));
-				dynamicTerrain->AddToDataGridInRadius(Hit.ImpactPoint, 100, -1);
-				dynamicTerrain->CalculateMesh();
-			}*/
 		}
 		else {
-			UE_LOG(LogTemp, Display, TEXT("Miss object"))
+			//UE_LOG(LogTemp, Display, TEXT("Miss object"))
 		}
 	}
 	
